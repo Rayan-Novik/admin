@@ -89,7 +89,14 @@ const SignupPage = () => {
       }, 3000);
 
     } catch (err) {
-      setError(err.response?.data?.message || 'Erro ao criar a conta.');
+      // 🔴 NOVO: Joga o erro completo no console do navegador (Aperte F12 para ver)
+      console.error("❌ Erro detalhado recebido do Backend:", err.response || err);
+      
+      // 🔴 NOVO: Tenta pescar a mensagem exata que o backend cuspiu
+      const msgBackend = err.response?.data?.message || err.response?.data?.error || 'Erro interno no servidor ao criar a conta.';
+      
+      // Exibe na tela vermelha do alerta
+      setError(`Falha: ${msgBackend}`);
     } finally {
       setLoading(false);
     }
