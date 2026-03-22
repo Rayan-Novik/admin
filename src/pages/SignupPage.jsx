@@ -1,7 +1,9 @@
 import React, { useState } from 'react';
 import { Form, Button, Container, Row, Col, Card, Alert, Spinner, InputGroup } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios'; 
+
+// 🚀 IMPORTAÇÃO ATUALIZADA: Pegando a instância centralizada da API
+import api from '../services/api'; 
 import "../styles/login.css"; 
 
 const SignupPage = () => {
@@ -12,7 +14,6 @@ const SignupPage = () => {
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
   
-  // 🚀 NOVO: Estado para controlar o plano selecionado
   const [planoSelecionado, setPlanoSelecionado] = useState('TRIAL');
   
   const [showPassword, setShowPassword] = useState(false);
@@ -71,16 +72,15 @@ const SignupPage = () => {
     setLoading(true);
 
     try {
-      const urlLocal = 'http://localhost:5000/api/tenants/register'; 
-      
-      const { data } = await axios.post(urlLocal, {
+      // 🚀 REQUISIÇÃO ATUALIZADA: Usando a rota base configurada no api.js
+      const { data } = await api.post('/tenants/register', {
         nome_fantasia: nomeFantasia,
         razao_social: razaoSocial,
         documento: documento,
         telefone_contato: telefone,
         email: email,
         senha: senha,
-        plano: planoSelecionado // 🚀 ENVIANDO O PLANO ESCOLHIDO PARA O BACKEND
+        plano: planoSelecionado
       });
 
       setSuccess(true);
@@ -101,7 +101,6 @@ const SignupPage = () => {
 
       <Container className="position-relative py-5">
         <Row className="justify-content-center">
-          {/* Aumentei a largura de xl={5} para xl={6} para acomodar bem os 3 cards do plano */}
           <Col xs={12} sm={10} md={8} lg={7} xl={6}>
             <div className="text-center mb-4">
               <div className="ararinha-login__logoWrap mx-auto mb-3">
@@ -130,7 +129,7 @@ const SignupPage = () => {
 
                 <Form onSubmit={submitHandler} style={{ display: success ? 'none' : 'block' }}>
                   
-                  {/* 🚀 OPÇÕES DE PLANO */}
+                  {/* OPÇÕES DE PLANO */}
                   <Form.Group className="mb-4">
                     <Form.Label className="small text-muted fw-semibold">Escolha seu Plano</Form.Label>
                     <Row className="g-2">
@@ -146,7 +145,6 @@ const SignupPage = () => {
                               backgroundColor: planoSelecionado === p.id ? '#f0f7ff' : '#f8f9fa'
                             }}
                           >
-                            {/* Ícone de check se estiver selecionado */}
                             {planoSelecionado === p.id && (
                               <div className="position-absolute text-primary" style={{ top: '5px', right: '10px' }}>
                                 <i className="bi bi-check-circle-fill"></i>
