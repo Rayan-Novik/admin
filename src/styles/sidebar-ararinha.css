@@ -1,0 +1,414 @@
+:root{
+  --ara-950:#071a2f;
+  --ara-900:#0b2a4d;
+  --ara-800:#0f3a6a;
+  --ara-700:#1164A6;
+  --ara-600:#1E88E5;
+  --ara-400:#41A7E1;
+  --ara-200:#E5EFF3;
+
+  --sb-bg: rgba(7, 26, 47, 0.92);
+  --sb-border: rgba(255,255,255,0.08);
+  --sb-text: rgba(255,255,255,0.70);
+  --sb-text-strong: rgba(255,255,255,0.92);
+  --sb-hover: rgba(255,255,255,0.08);
+  --sb-active-border: rgba(65,167,225,0.85);
+}
+
+.no-scrollbar::-webkit-scrollbar{ display:none; }
+
+@media (min-width: 1400px){
+  .sidebar{
+    backdrop-filter: blur(6px);
+  }
+}
+
+/* ======== SIDEBAR CONTAINER ======== */
+.sidebar{
+  background:
+    radial-gradient(900px 500px at 20% 10%, rgba(65,167,225,.14), transparent 55%),
+    radial-gradient(700px 500px at 90% 30%, rgba(30,136,229,.10), transparent 55%),
+    var(--sb-bg) !important;
+
+  border-right: 1px solid var(--sb-border) !important;
+
+  /* ✅ sombra mais leve (a tua é pesada) */
+  box-shadow: 0 12px 28px rgba(0,0,0,0.22);
+
+  /* ✅ blur é o maior culpado do 30fps -> DESLIGA */
+  backdrop-filter: none;
+
+  /* ✅ performance */
+  transform: translateZ(0);
+  will-change: width, transform;
+  contain: layout paint style;
+}
+
+/* mata padrão do bootstrap */
+.sidebar a,
+.sidebar .nav-link{
+  color: var(--sb-text) !important;
+  text-decoration: none !important;
+}
+
+/* ======== BRAND ======== */
+.sidebar-brand{
+  height: 84px;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--sb-border) !important;
+}
+
+.brand-full{
+  width: 100%;
+  display:flex;
+  align-items:center;
+  gap: 12px;
+  justify-content:center;
+}
+
+.brand-badge{
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.10);
+  display:grid;
+  place-items:center;
+  box-shadow: 0 10px 26px rgba(0,0,0,0.25);
+}
+
+.brand-badge--sm{
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+}
+
+.brand-logo{
+  max-height: 34px;
+  width: auto;
+  filter: drop-shadow(0 8px 12px rgba(0,0,0,.18));
+}
+
+.brand-logo--sm{
+  max-height: 28px;
+}
+
+.brand-title{
+  color: var(--sb-text-strong) !important;
+  font-weight: 800;
+  letter-spacing: -0.2px;
+  line-height: 1.05;
+}
+
+.brand-title--sm{
+  font-size: 1rem;
+}
+
+.brand-subtitle{
+  color: rgba(255,255,255,0.60) !important;
+  font-size: 0.78rem;
+  margin-top: 2px;
+}
+
+.brand-mini{
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+  display:grid;
+  place-items:center;
+  font-weight: 900;
+  color: var(--ara-400) !important;
+  background: rgba(65,167,225,0.10);
+  border: 1px solid rgba(65,167,225,0.25);
+}
+
+/* ======== NAV ITEMS ======== */
+.sidebar .nav-link-item{
+  color: var(--sb-text) !important;
+  border-radius: 14px;
+  margin: 6px 6px;
+  padding: 10px 12px;
+  display:flex !important;
+  align-items:center !important;
+  gap: 10px;
+  transition: background .18s ease, color .18s ease, transform .18s ease;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.sidebar .nav-link-item:hover{
+  color: #fff !important;
+  background: var(--sb-hover) !important;
+}
+
+.sidebar .nav-link-item.active{
+  color: #fff !important;
+  background: linear-gradient(90deg, rgba(65,167,225,0.18) 0%, rgba(30,136,229,0.06) 100%) !important;
+  box-shadow: inset 0 0 0 1px rgba(65,167,225,0.18) !important;
+  position: relative;
+}
+
+.sidebar .nav-link-item.active::before{
+  content:"";
+  position:absolute;
+  left: 0;
+  top: 10px;
+  bottom: 10px;
+  width: 3px;
+  border-radius: 999px;
+  background: var(--sb-active-border);
+}
+
+.sidebar .nav-link-item.collapsed{
+  justify-content:center !important;
+  padding: 12px 10px !important;
+}
+
+.sidebar .nav-ico{
+  width: 24px;
+  min-width: 24px;
+  height: 24px;
+  display:inline-flex !important;
+  align-items:center !important;
+  justify-content:center !important;
+  line-height: 1 !important;
+  font-size: 1.05rem !important;
+  color: rgba(255,255,255,0.72) !important;
+}
+
+.sidebar .nav-text{
+  flex: 1;
+  min-width: 0;
+  color: inherit !important;
+}
+
+.nav-dot{
+  margin-left: auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #22c55e;
+}
+
+/* ======== GROUPS ======== */
+.sidebar .group-header{
+  cursor:pointer;
+  color: rgba(255,255,255,0.55) !important;
+  padding: 12px 14px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 800;
+  margin: 6px 6px 4px;
+  display:flex;
+  align-items:center;
+  justify-content: space-between;
+  transition: background .18s ease, color .18s ease;
+}
+
+.sidebar .group-header:hover{
+  color: #fff !important;
+  background: rgba(255,255,255,0.06) !important;
+}
+
+.sidebar .group-header.active-group{
+  color: #fff !important;
+  background: rgba(65,167,225,0.10) !important;
+  box-shadow: inset 0 0 0 1px rgba(65,167,225,0.12) !important;
+}
+
+.sidebar .sidebar-icon{
+  width: 24px;
+  min-width: 24px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  color: rgba(255,255,255,0.55) !important;
+}
+
+.sidebar .icon-active{
+  color: var(--ara-400) !important;
+}
+
+.sidebar .chevron{
+  font-size: 0.75rem;
+  color: rgba(255,255,255,0.45) !important;
+}
+
+.sidebar .submenu-container{
+  padding: 6px 6px 10px;
+  margin: 0 6px;
+  background: rgba(0,0,0,0.18) !important;
+  border-radius: 14px;
+  overflow:hidden;
+  border: 1px solid rgba(255,255,255,0.06) !important;
+}
+
+/* ======== BOTTOM ======== */
+.sidebar-bottom{
+  border-top: 1px solid var(--sb-border) !important;
+  background: rgba(0,0,0,0.18) !important;
+}
+
+.collapse-btn{
+  color: rgba(255,255,255,0.65) !important;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.06) !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+  padding: 10px 12px !important;
+}
+
+.collapse-btn:hover{
+  background: rgba(255,255,255,0.10) !important;
+  color: #fff !important;
+}
+
+.logout-link{
+  margin-top: 10px;
+  border-radius: 12px;
+  color: rgba(255, 90, 90, 0.95) !important;
+  display:flex !important;
+  align-items:center !important;
+  padding: 10px 12px !important;
+  background: rgba(255, 90, 90, 0.08) !important;
+  border: 1px solid rgba(255, 90, 90, 0.12) !important;
+}
+
+.logout-link:hover{
+  background: rgba(255, 90, 90, 0.12) !important;
+  color: #ffb4b4 !important;
+}
+
+/* ======== MOBILE SHEET ======== */
+.mobile-sheet{
+  background:
+    radial-gradient(900px 500px at 20% 10%, rgba(65,167,225,.14), transparent 55%),
+    radial-gradient(700px 500px at 90% 30%, rgba(30,136,229,.10), transparent 55%),
+    rgba(7, 26, 47, 0.96) !important;
+  border-top: 1px solid rgba(255,255,255,0.10) !important;
+  backdrop-filter: blur(10px);
+}
+
+.mobile-handle{
+  width: 44px;
+  height: 5px;
+  border-radius: 999px;
+  background: rgba(255,255,255,0.35);
+}
+
+.mobile-group-title{
+  color: rgba(255,255,255,0.55);
+  border-bottom: 1px solid rgba(255,255,255,0.08);
+}
+
+/* ===== MOBILE BAR (sem bootstrap button link) ===== */
+.mobile-bar{
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 1060;
+  height: 64px;
+  padding: 8px 12px calc(8px + env(safe-area-inset-bottom));
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  background: rgba(7, 26, 47, 0.96) !important;
+  border-top: 1px solid rgba(255,255,255,0.10) !important;
+  backdrop-filter: blur(10px);
+}
+
+.mobile-btn{
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: rgba(255,255,255,0.60) !important;
+  text-decoration: none !important;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  width: 72px;
+  padding: 6px 6px;
+  line-height: 1;
+}
+
+.mobile-btn i{ line-height: 1; }
+.mobile-btn.active{ color: var(--ara-400) !important; }
+
+.mobile-label{
+  font-size: 0.65rem;
+  line-height: 1;
+}
+
+.mobile-fab-wrap{
+  position: relative;
+  top: -18px;
+}
+
+.mobile-fab{
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  border: 0;
+  color: #fff;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, var(--ara-600), var(--ara-700));
+  box-shadow: 0 14px 28px rgba(0,0,0,0.35);
+}
+
+.mobile-fab i{
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+/* ===== FIX: texto preto no MOBILE ===== */
+.mobile-sheet,
+.mobile-sheet *{
+  color: rgba(255,255,255,0.85) !important;
+}
+
+.mobile-sheet a,
+.mobile-sheet .nav-link,
+.mobile-sheet .nav-link-item{
+  color: rgba(255,255,255,0.80) !important;
+}
+
+.mobile-sheet .nav-link-item.active{
+  color: #fff !important;
+}
+
+.mobile-bar,
+.mobile-bar *{
+  color: rgba(255,255,255,0.70) !important;
+}
+
+.mobile-bar .mobile-btn.active{
+  color: var(--ara-400) !important;
+}
+
+.sidebar .nav-link-item,
+.sidebar .group-header,
+.sidebar .submenu-container,
+.brand-badge{
+  transform: translateZ(0);
+  will-change: transform, opacity;
+}
+
+
+/* Dá espaço pro app não ficar atrás da barra no mobile */
+@media (max-width: 991px){
+  .mobile-sheet{
+    backdrop-filter: none !important;
+  }
+  .mobile-bar{
+    backdrop-filter: none !important;
+  }
+  .mobile-fab{
+    box-shadow: 0 10px 18px rgba(0,0,0,0.28) !important; /* mais leve */
+  }
+}

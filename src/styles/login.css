@@ -1,0 +1,75 @@
+/* Paleta inspirada na sua logo */
+:root{
+  --ara-900: #0b3a6b;
+  --ara-700: #1164A6;
+  --ara-600: #1E88E5;
+  --ara-400: #41A7E1;
+  --ara-200: #E5EFF3;
+}
+
+.ararinha-login{
+  background: #f6f9fc;
+  position: relative;
+  overflow: hidden;
+}
+
+.ararinha-login__bg{
+  position: absolute;
+  inset: -200px;
+  background:
+    radial-gradient(600px 400px at 20% 30%, rgba(65,167,225,.22), transparent 60%),
+    radial-gradient(700px 500px at 80% 40%, rgba(30,136,229,.18), transparent 60%),
+    radial-gradient(900px 600px at 50% 100%, rgba(17,100,166,.12), transparent 65%);
+  filter: blur(2px);
+}
+
+.ararinha-login__logoWrap{
+  width: 92px;
+  height: 92px;
+  border-radius: 24px;
+  background: #fff;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 10px 30px rgba(10, 40, 80, 0.10);
+  border: 1px solid rgba(17,100,166,.12);
+}
+
+.ararinha-login__title{
+  letter-spacing: -0.4px;
+  color: var(--ara-900);
+}
+
+.ararinha-login__card{
+  border: 1px solid rgba(17,100,166,.12);
+}
+
+.ararinha-login__input{
+  border: 1px solid rgba(17,100,166,.18);
+  border-radius: 14px;
+  background: #fff;
+  transition: box-shadow .15s ease, border-color .15s ease;
+}
+
+.ararinha-login__input:focus-within{
+  border-color: rgba(30,136,229,.55);
+  box-shadow: 0 0 0 4px rgba(30,136,229,.12);
+}
+
+.ararinha-login__eye{
+  color: var(--ara-700);
+}
+
+.ararinha-login__btn{
+  background: linear-gradient(135deg, var(--ara-600), var(--ara-700));
+  border: 0;
+  box-shadow: 0 10px 18px rgba(17,100,166,.18);
+}
+
+.ararinha-login__btn:hover{
+  filter: brightness(0.98);
+}
+
+.ararinha-login__footer{
+  background: rgba(229,239,243,.65);
+  border-top: 1px solid rgba(17,100,166,.10);
+}
