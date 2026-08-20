@@ -31,10 +31,9 @@ export default function EmissorNotaPedido({ idPedido, notaInicial }) {
         setLoading(true);
         setErro('');
         try {
-            // 🟢 ATUALIZADO: Aponta para a nova rota de SIMULAÇÃO de saída
-            const { data } = await api.post(`/fiscal/simular/saida/${notaAlvo.id_nota}`);
+            // 🟢 MUDOU AQUI: Tiramos a palavra "simular" da rota!
+            const { data } = await api.post(`/fiscal/saida/${notaAlvo.id_nota}/emitir`);
             
-            // Atualiza apenas a nota específica no array que foi autorizada
             setNotas(prev => prev.map(n => n.id_nota === notaAlvo.id_nota ? data.nota : n));
         } catch (err) {
             setErro(err.response?.data?.message || 'Erro ao emitir nota.');

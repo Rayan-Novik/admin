@@ -109,7 +109,7 @@ export const buscarRelatorioCaixa = async (id_caixa) => {
 };
 
 export const gerarRascunhoFiscalPdv = async (id_pedido, tipo_nota) => {
-    const { data } = await api.post('/fiscal/notas/rascunho', {
+    const { data } = await api.post('/fiscal/saida/rascunho', {
         id_pedido,
         tipo_nota
     });

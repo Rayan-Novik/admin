@@ -67,13 +67,16 @@ const DashboardPage = () => {
 
         const slug = localStorage.getItem('tenantSlug'); 
         const domain = localStorage.getItem('tenantDomain'); 
+        
+        // Pega exclusivamente do .env
+        const baseDomain = process.env.REACT_APP_BASE_DOMAIN;
 
         if (domain && domain !== 'null' && domain !== 'undefined') {
             setStoreUrl(`https://${domain}`);
-        } else if (slug) {
-            setStoreUrl(`https://${slug}.ararinhacloud.shop`);
+        } else if (slug && slug !== 'null' && slug !== 'undefined') {
+            setStoreUrl(`https://${slug}.${baseDomain}`);
         } else {
-            setStoreUrl('https://ararinhacloud.shop'); 
+            setStoreUrl(`https://${baseDomain}`); 
         }
     }, []);
 

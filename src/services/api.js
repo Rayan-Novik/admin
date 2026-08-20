@@ -3,7 +3,7 @@ import axios from 'axios';
 // 🔴 MUDANÇA IMPORTANTE PARA TESTE LOCAL:
 // Troquei o link da ManateeChat pelo seu localhost temporariamente.
 // Se o seu backend roda em uma porta diferente (ex: 3000, 8080), mude o 5000 abaixo!
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
+const API_URL = process.env.REACT_APP_API_URL;
 
 const api = axios.create({
     baseURL: API_URL,
