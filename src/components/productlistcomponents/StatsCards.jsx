@@ -1,53 +1,78 @@
 import React from 'react';
-import { Row, Col, Card, Button } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+import { Row, Col } from 'react-bootstrap';
+import { useNavigate } from 'react-router-dom';
+import { GreenButton } from '../ui/buttons/CtaButton';
 
-const StatsCards = ({ stats }) => (
-    <Row className="align-items-center mb-4 g-3">
-        <Col md={12} lg={5} className="d-none d-lg-block">
-            <h2 className="fw-bold mb-0 text-dark">Resumo do Catálogo</h2>
-            <p className="text-muted mb-0 small">Acompanhamento rápido de estoque.</p>
-        </Col>
-        <Col md={12} lg={7}>
-            <Row className="g-2">
-                {[
-                    { label: 'TOTAL', value: stats.total, color: 'text-dark' },
-                    { label: 'ATIVOS', value: stats.ativos, color: 'text-success' },
-                    { label: 'ML', value: stats.noML, color: 'text-warning' },
-                ].map((stat, idx) => (
-                    <Col key={idx} xs={4} sm={3}>
-                        <Card className="border-0 shadow-sm h-100 bg-white clean-card-mobile">
-                            <Card.Body className="p-3 text-center d-flex flex-column justify-content-center">
-                                <small className="text-muted fw-bold d-block mb-1" style={{ fontSize: '10px' }}>{stat.label}</small>
-                                <span className={`fw-bolder fs-5 ${stat.color}`}>{stat.value}</span>
-                            </Card.Body>
-                        </Card>
-                    </Col>
-                ))}
-                
-                {/* Botão Novo Produto */}
-                <Col xs={12} sm={3} className="d-flex d-lg-block mt-3 mt-sm-0">
-                    <LinkContainer to="/admin/product/create">
-                        <Button variant="dark" className="w-100 h-100 rounded-3 shadow-sm d-flex flex-column align-items-center justify-content-center p-3 clean-btn-mobile" style={{ minHeight: '60px' }}>
-                            <i className="bi bi-plus-lg fs-5 mb-1 d-none d-sm-block"></i>
-                            <span className="fw-bold" style={{ fontSize: '0.8rem' }}><i className="bi bi-plus-lg d-sm-none me-1"></i> NOVO PRODUTO</span>
-                        </Button>
-                    </LinkContainer>
-                </Col>
-            </Row>
-        </Col>
-        
-        <style>{`
-            @media (max-width: 991px) {
-                .clean-btn-mobile {
-                    border-radius: 20px !important;
-                    background-color: #218cf4 !important; /* Azul destaque no mobile */
-                    border: none !important;
-                    color: white !important;
-                }
-            }
-        `}</style>
-    </Row>
-);
+const StatsCards = ({ stats }) => {
+    const navigate = useNavigate();
+
+    return (
+        <Row className="align-items-center mb-4 g-3">
+            <Col md={12} lg={5} className="d-none d-lg-block">
+                {/* CABEÇALHO DESKTOP */}
+                <div className="d-none d-lg-flex justify-content-between align-items-center gap-3 px-3 px-lg-0">
+                    <div>
+                        <h4 className="fw-bold m-0 d-flex align-items-center" style={{ fontSize: '1.25rem', color: 'var(--text-primary, #0F172A)' }}>
+                            <i className="bi bi-box-seam me-3 opacity-75"></i>
+                            Gestão de Produtos
+                        </h4>
+                        <small className="mt-1 d-block" style={{ color: 'var(--text-secondary, #64748B)' }}>Catálogo completo e integrações.</small>
+                    </div>
+                </div>
+            </Col>
+
+            {/* CABEÇALHO MOBILE */}
+            <Col md={12} className="d-block d-lg-none px-3">
+                <div className="d-flex justify-content-between align-items-center">
+                    <h4 className="fw-bold m-0 d-flex align-items-center" style={{ fontSize: '1.3rem', color: 'var(--text-primary, #0F172A)' }}>
+                        <i className="bi bi-box-seam me-2 opacity-75"></i> Produtos
+                    </h4>
+                </div>
+            </Col>
+            
+            <Col md={12} lg={7}>
+                {/* 👇 AQUI ESTÁ A MÁGICA: d-flex com gap-2 para grudar os itens 👇 */}
+                <div className="d-flex flex-wrap flex-sm-nowrap justify-content-lg-end gap-2 px-3 px-lg-0">
+                    {[
+                        { label: 'TOTAL', value: stats.total, color: 'var(--text-primary, #0F172A)' },
+                        { label: 'ATIVOS', value: stats.ativos, color: '#10B981' },
+                        { label: 'ML', value: stats.noML, color: '#F59E0B' },
+                    ].map((stat, idx) => (
+                        <div 
+                            key={idx}
+                            className="d-flex flex-column justify-content-center align-items-center flex-grow-1 flex-sm-grow-0"
+                            style={{ 
+                                height: '50px',
+                                minWidth: '85px', // Garante que não fiquem esmagados
+                                borderRadius: '14px',
+                                transition: 'all 0.2s ease'
+                            }}
+                        >
+                            <span className="fw-bolder" style={{ fontSize: '16px', lineHeight: '1', color: stat.color }}>
+                                {stat.value}
+                            </span>
+                            <span className="fw-bold text-uppercase" style={{ fontSize: '9px', letterSpacing: '0.5px', color: 'var(--text-secondary, #64748B)', marginTop: '2px' }}>
+                                {stat.label}
+                            </span>
+                        </div>
+                    ))}
+                    
+                    {/* Botão Novo Produto */}
+                    <div className="flex-grow-1 flex-sm-grow-0 mt-2 mt-sm-0" style={{ minWidth: '120px' }}>
+                        <GreenButton 
+                            onClick={() => navigate('/admin/product/create')}
+                            fullWidth={true}
+                        >
+                            <i className="bi bi-plus-lg"></i>
+                            <span className="fw-bold ms-2" style={{ fontSize: '13px' }}>
+                                NOVO
+                            </span>
+                        </GreenButton>
+                    </div>
+                </div>
+            </Col>
+        </Row>
+    );
+};
 
 export default StatsCards;

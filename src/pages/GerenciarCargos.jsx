@@ -1,9 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Table, Button, Form, Modal, Spinner, Badge, Row, Col, Alert } from 'react-bootstrap';
-import api from '../services/api';
+import { Modal, Spinner } from 'react-bootstrap';
+import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
+import api from '../services/api';
 
-// 🟢 1. PERMISSÕES FOCADAS NA OPERAÇÃO + CONFIGURAÇÕES DA LOJA
+// 🟢 NOSSOS COMPONENTES UNIVERSAIS DE UI
+import { CustomInput } from '../components/ui/SearchInput/SearchInput';
+import { CtaButton, LightButton } from '../components/ui/buttons/CtaButton';
+import { SquareButton, RedSquareButton } from '../components/ui/buttons/SquareButton';
+import { FlatListContainer, FlatListHeader, FlatListItem } from '../components/ui/listagem/FlatList';
+
+// 🟢 PERMISSÕES FOCADAS NA OPERAÇÃO + CONFIGURAÇÕES DA LOJA
 const PERMISSOES_AGRUPADAS = [
     {
         categoria: 'Vendas & Pedidos',
@@ -91,12 +98,12 @@ const PERMISSOES_AGRUPADAS = [
         ]
     }
 ];
-// 🟢 2. PEGA TODAS AS PERMISSÕES POSSÍVEIS (Para dar pro Dono)
+
 const TODAS_PERMISSOES = PERMISSOES_AGRUPADAS.flatMap(grupo => grupo.itens.map(item => item.id));
 
 const GerenciarCargos = () => {
     // ==============================================================
-    // 🟢 LÓGICA DE PERMISSÕES 100% BLINDADA
+    // LÓGICA DE PERMISSÕES 100% BLINDADA
     // ==============================================================
     const rawUser = localStorage.getItem('adminInfo') || localStorage.getItem('tenant') || localStorage.getItem('user') || localStorage.getItem('usuario') || '{}';
     let dadosUser = {};
@@ -107,7 +114,6 @@ const GerenciarCargos = () => {
 
     const roleUpper = String(dadosUser.role || '').toUpperCase();
 
-    // Se não tiver ROLE, ou se for Proprietário/Admin, É O DONO!
     const isDono = !dadosUser.role ||
         roleUpper === 'PROPRIETÁRIO' ||
         roleUpper === 'DONO' ||
@@ -120,12 +126,15 @@ const GerenciarCargos = () => {
 
     const podeVer = isDono || permissoesUsuario.includes('EQUIPE_VIEW') || permissoesUsuario.includes('EQUIPE_MANAGE');
     const podeEditar = isDono || permissoesUsuario.includes('EQUIPE_MANAGE');
-    // ==============================================================
 
+    // ==============================================================
+    // ESTADOS
+    // ==============================================================
     const [cargos, setCargos] = useState([]);
     const [loading, setLoading] = useState(true);
 
     const [showModal, setShowModal] = useState(false);
+    const [saving, setSaving] = useState(false);
     const [formData, setFormData] = useState({
         id_cargo: null,
         nome: '',
@@ -140,7 +149,7 @@ const GerenciarCargos = () => {
         try {
             const { data } = await api.get('/cargos');
 
-            // 🟢 3. CRIA O CARGO "DONO" FAKE E JOGA NO TOPO DA LISTA
+            // 🟢 CRIA O CARGO "DONO" FAKE E JOGA NO TOPO DA LISTA
             const cargoDonoMaster = {
                 id_cargo: 'master_dono',
                 nome: 'Dono / Proprietário',
@@ -160,6 +169,7 @@ const GerenciarCargos = () => {
 
     useEffect(() => {
         fetchCargos();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const handleCreateClick = () => {
@@ -170,7 +180,6 @@ const GerenciarCargos = () => {
 
     const handleEditClick = (cargo) => {
         if (!podeEditar) return;
-        // Impede que o modal abra se tentarem clicar no cargo do Dono
         if (cargo.id_cargo === 'master_dono') {
             toast.info('O cargo de Proprietário não pode ser modificado.');
             return;
@@ -188,7 +197,7 @@ const GerenciarCargos = () => {
 
     const handleDeleteClick = async (id) => {
         if (!podeEditar) return;
-        if (id === 'master_dono') return; // Segurança extra
+        if (id === 'master_dono') return; 
 
         if (window.confirm('Tem certeza que deseja excluir este cargo?')) {
             try {
@@ -216,6 +225,8 @@ const GerenciarCargos = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         if (!podeEditar) return;
+        
+        setSaving(true);
         try {
             if (formData.id_cargo && formData.id_cargo !== 'master_dono') {
                 await api.put(`/cargos/${formData.id_cargo}`, formData);
@@ -228,30 +239,35 @@ const GerenciarCargos = () => {
             fetchCargos();
         } catch (error) {
             toast.error(error.response?.data?.message || 'Erro ao salvar cargo.');
+        } finally {
+            setSaving(false);
         }
     };
 
+    // 🛑 BLOQUEIO PARA QUEM NÃO PODE VER A TELA
     if (!podeVer) {
         return (
-            <Container className="pt-5 mt-5 text-center">
-                <Alert variant="danger" className="d-inline-block p-4 rounded-4 shadow-sm border-0">
-                    <i className="bi bi-shield-lock-fill display-4 text-danger mb-3 d-block"></i>
+            <div className="d-flex justify-content-center pt-5 mt-5">
+                <div className="bg-danger bg-opacity-10 text-danger p-4 rounded-4 text-center border border-danger border-opacity-25 shadow-sm">
+                    <i className="bi bi-shield-lock-fill display-4 mb-3 d-block"></i>
                     <h4 className="fw-bold">Acesso Negado</h4>
-                    <p className="text-muted mb-0">Você não tem permissão para visualizar este setor.</p>
-                </Alert>
-            </Container>
+                    <p className="mb-0">Você não tem permissão para visualizar este setor.</p>
+                </div>
+            </div>
         );
     }
 
     return (
-        <div style={{ backgroundColor: 'var(--bg-main, #f8fafc)', minHeight: '100vh', paddingBottom: '2rem', transition: 'background-color 0.2s ease' }}>
-            <Container fluid="lg" className="pt-4">
+        <div style={{ backgroundColor: 'var(--bg-main, #f8fafc)', minHeight: '100vh', paddingBottom: '3rem' }}>
+            <div className="w-100 mx-auto pt-lg-4 pt-3 px-3 px-lg-4" style={{ maxWidth: '1200px' }}>
 
+                {/* ========================================================= */}
                 {/* CABEÇALHO */}
-                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4">
+                {/* ========================================================= */}
+                <div className="d-flex flex-column flex-md-row justify-content-between align-items-md-center mb-4 gap-3">
                     <div>
                         <h4 className="fw-bold m-0 d-flex align-items-center" style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-                            <i className="bi bi-shield-lock me-2 opacity-75"></i>
+                            <i className="bi bi-shield-lock me-3 opacity-75"></i>
                             Cargos e Permissões
                         </h4>
                         <p className="mb-0 mt-1" style={{ color: 'var(--text-secondary)', fontSize: '0.875rem' }}>
@@ -261,213 +277,215 @@ const GerenciarCargos = () => {
                         </p>
                     </div>
 
-                    {podeEditar && (
-                        <div className="mt-3 mt-md-0">
-                            <Button variant="primary" onClick={handleCreateClick} className="rounded-pill px-4 py-2 d-flex align-items-center gap-2 fw-bold shadow-sm">
-                                <i className="bi bi-plus-lg"></i> Novo Cargo
-                            </Button>
-                        </div>
-                    )}
+                    <div className="d-flex gap-2">
+                        <SquareButton onClick={fetchCargos} disabled={loading} color="var(--bg-sidebar, #FFFFFF)" style={{ height: '46px' }}>
+                            {loading ? <i className="bi bi-arrow-clockwise d-inline-block" style={{ animation: 'spin 1s linear infinite' }}></i> : <i className="bi bi-arrow-clockwise fs-5"></i>}
+                        </SquareButton>
+                        
+                        {podeEditar && (
+                            <CtaButton onClick={handleCreateClick} className="px-4 text-white" style={{ height: '46px', borderRadius: '12px' }}>
+                                <i className="bi bi-plus-lg me-2"></i> Novo Cargo
+                            </CtaButton>
+                        )}
+                    </div>
                 </div>
 
-                {/* LISTAGEM DE CARGOS */}
-                <div className="clean-card mb-4">
-                    {loading ? (
-                        <div className="text-center p-5" style={{ color: 'var(--text-secondary)' }}>
-                            <Spinner animation="border" variant="secondary" />
-                            <p className="mt-3 small fw-medium">Carregando cargos...</p>
-                        </div>
-                    ) : (
-                        <div className="table-responsive">
-                            <Table hover className='align-middle mb-0 text-nowrap table-borderless table-dark-fix'>
-                                <thead style={{ backgroundColor: 'var(--bg-main)' }}>
-                                    <tr className="text-uppercase" style={{ fontSize: '0.75rem', letterSpacing: '0.5px' }}>
-                                        <th className="py-3 ps-4">Nome do Cargo</th>
-                                        <th className="py-3">Membros</th>
-                                        <th className="py-3">Permissões</th>
-                                        {podeEditar && <th className="py-3 pe-4 text-end">Ações</th>}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {cargos.length > 0 ? cargos.map((cargo) => {
-                                        const isMaster = cargo.id_cargo === 'master_dono';
+                {/* ========================================================= */}
+                {/* LISTAGEM DE CARGOS (FlatList Inteligente) */}
+                {/* ========================================================= */}
+                <div className="p-0 px-lg-0">
+                    <AnimatePresence mode='wait'>
+                        {loading ? (
+                            <motion.div initial={{opacity:0}} animate={{opacity:1}} exit={{opacity:0}} className="d-flex flex-column align-items-center justify-content-center py-5 mt-4">
+                                <i className="bi bi-arrow-clockwise display-4 text-primary" style={{ animation: 'spin 1s linear infinite' }}></i>
+                                <p className="mt-3 text-secondary fw-medium">Carregando cargos...</p>
+                            </motion.div>
+                        ) : (
+                            <FlatListContainer 
+                                loading={false} 
+                                empty={cargos.length === 0} 
+                                emptyMessage="Nenhum cargo encontrado." 
+                                emptyIcon="bi-shield-lock"
+                            >
+                                <FlatListHeader>
+                                    <div className="col-lg-4 ps-2">Nome do Cargo</div>
+                                    <div className="col-lg-2">Membros</div>
+                                    <div className="col-lg-4">Permissões</div>
+                                    {podeEditar && <div className="col-lg-2 text-end pe-2">Ações</div>}
+                                </FlatListHeader>
 
-                                        return (
-                                            <tr
-                                                key={cargo.id_cargo}
-                                                className={podeEditar && !isMaster ? "hover-effect cursor-pointer" : ""}
-                                                onClick={() => {
-                                                    if (podeEditar && !isMaster) handleEditClick(cargo);
-                                                    if (isMaster) toast.info('O cargo de Proprietário não pode ser editado.');
+                                {cargos.map((cargo) => {
+                                    const isMaster = cargo.id_cargo === 'master_dono';
+
+                                    return (
+                                        <motion.div key={cargo.id_cargo} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="w-100">
+                                            <FlatListItem 
+                                                className="py-3" 
+                                                style={{ 
+                                                    backgroundColor: isMaster ? 'rgba(245, 158, 11, 0.05)' : 'var(--bg-main, #FFFFFF)',
+                                                    borderColor: isMaster ? 'rgba(245, 158, 11, 0.2)' : 'rgba(100, 116, 139, 0.15)' 
                                                 }}
-                                                style={{ backgroundColor: isMaster ? 'rgba(245, 158, 11, 0.05)' : '' }} // Destaca o dono de laranjinha
                                             >
-                                                <td className="ps-4 py-3">
-                                                    <div className="fw-bold d-flex align-items-center" style={{ color: isMaster ? '#b45309' : 'var(--text-primary)' }}>
-                                                        {isMaster && <i className="bi bi-star-fill me-2 text-warning"></i>}
-                                                        {cargo.nome}
+                                                <div className="row w-100 m-0 align-items-center">
+                                                    
+                                                    {/* 1. Nome do Cargo */}
+                                                    <div className="col-12 col-lg-4 p-0 mb-3 mb-lg-0 d-flex flex-column justify-content-center">
+                                                        <div className="fw-bold d-flex align-items-center mb-1" style={{ color: isMaster ? '#b45309' : 'var(--text-primary)', fontSize: '15px' }}>
+                                                            {isMaster && <i className="bi bi-star-fill me-2 text-warning"></i>}
+                                                            {cargo.nome}
+                                                        </div>
+                                                        <div className="text-secondary small fw-medium text-truncate" style={{ fontSize: '12px' }}>
+                                                            {cargo.descricao || 'Sem descrição'}
+                                                        </div>
                                                     </div>
-                                                    <div className="small" style={{ fontSize: '0.75rem', color: 'var(--text-secondary)' }}>
-                                                        {cargo.descricao || 'Sem descrição'}
-                                                    </div>
-                                                </td>
-                                                <td>
-                                                    <Badge bg={isMaster ? "warning" : "secondary"} className={`bg-opacity-10 rounded-pill px-3 ${isMaster ? "text-warning border border-warning" : "text-secondary"}`}>
-                                                        <i className="bi bi-people-fill me-1"></i>
-                                                        {cargo._count?.funcionarios || 0} Usuários
-                                                    </Badge>
-                                                </td>
-                                                <td>
-                                                    <div className="small fw-medium" style={{ color: 'var(--text-primary)' }}>
-                                                        <i className="bi bi-key-fill text-warning me-1"></i>
-                                                        {isMaster ? 'Acesso Total' : `${cargo.permissoes?.length || 0} acessos liberados`}
-                                                    </div>
-                                                </td>
 
-                                                {podeEditar && (
-                                                    <td className="pe-4 text-end" onClick={(e) => e.stopPropagation()}>
-                                                        {isMaster ? (
-                                                            <Badge bg="dark" className="bg-opacity-10 text-muted rounded-pill px-3 fw-normal">
-                                                                <i className="bi bi-lock-fill me-1"></i> Inalterável
-                                                            </Badge>
-                                                        ) : (
-                                                            <div className="d-flex justify-content-end gap-2">
-                                                                <Button variant="light" size="sm" className="text-primary rounded-3 border-0 bg-opacity-10 shadow-none" onClick={() => handleEditClick(cargo)} style={{ backgroundColor: 'var(--bg-main)' }}>
-                                                                    <i className="bi bi-pencil-fill"></i>
-                                                                </Button>
-                                                                <Button
-                                                                    variant="light"
-                                                                    size="sm"
-                                                                    className="text-danger rounded-3 border-0 bg-opacity-10 shadow-none"
-                                                                    onClick={() => handleDeleteClick(cargo.id_cargo)}
-                                                                    style={{ backgroundColor: 'var(--bg-main)' }}
-                                                                    disabled={cargo._count?.funcionarios > 0}
-                                                                    title={cargo._count?.funcionarios > 0 ? "Remova os funcionários deste cargo primeiro" : "Excluir Cargo"}
-                                                                >
-                                                                    <i className="bi bi-trash-fill"></i>
-                                                                </Button>
-                                                            </div>
-                                                        )}
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        );
-                                    }) : (
-                                        <tr>
-                                            <td colSpan={podeEditar ? "4" : "3"} className="text-center py-5" style={{ color: 'var(--text-secondary)' }}>
-                                                Nenhum cargo encontrado.
-                                            </td>
-                                        </tr>
-                                    )}
-                                </tbody>
-                            </Table>
-                        </div>
-                    )}
+                                                    {/* 2. Membros */}
+                                                    <div className="col-6 col-lg-2 p-0 mb-3 mb-lg-0">
+                                                        <span className="d-inline d-lg-none text-muted fw-normal me-1 small">Membros:</span>
+                                                        <span className={`px-3 py-1 rounded-pill fw-bold bg-opacity-10 border border-opacity-25 ${isMaster ? 'bg-warning text-warning border-warning' : 'bg-secondary text-secondary border-secondary'}`} style={{ fontSize: '11px' }}>
+                                                            <i className="bi bi-people-fill me-1"></i> {cargo._count?.funcionarios || 0}
+                                                        </span>
+                                                    </div>
+
+                                                    {/* 3. Permissões */}
+                                                    <div className="col-6 col-lg-4 p-0 mb-3 mb-lg-0">
+                                                        <div className="fw-bold" style={{ color: 'var(--text-primary)', fontSize: '13px' }}>
+                                                            <i className="bi bi-key-fill text-warning me-2"></i>
+                                                            {isMaster ? 'Acesso Total ao Sistema' : `${cargo.permissoes?.length || 0} acessos liberados`}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* 4. Ações */}
+                                                    {podeEditar && (
+                                                        <div className="col-12 col-lg-2 p-0 mt-2 mt-lg-0 d-flex flex-wrap justify-content-lg-end align-items-center gap-2">
+                                                            {isMaster ? (
+                                                                <span className="bg-dark bg-opacity-10 text-secondary rounded-pill px-3 py-2 fw-medium" style={{ fontSize: '11px' }}>
+                                                                    <i className="bi bi-lock-fill me-1"></i> Inalterável
+                                                                </span>
+                                                            ) : (
+                                                                <>
+                                                                    <SquareButton onClick={() => handleEditClick(cargo)} color="var(--bg-sidebar, #F4F6FA)">
+                                                                        <i className="bi bi-pencil text-primary"></i>
+                                                                    </SquareButton>
+                                                                    <RedSquareButton onClick={() => handleDeleteClick(cargo.id_cargo)} disabled={cargo._count?.funcionarios > 0} title={cargo._count?.funcionarios > 0 ? "Remova os funcionários deste cargo primeiro" : "Excluir"}>
+                                                                        <i className="bi bi-trash"></i>
+                                                                    </RedSquareButton>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </FlatListItem>
+                                        </motion.div>
+                                    );
+                                })}
+                            </FlatListContainer>
+                        )}
+                    </AnimatePresence>
                 </div>
-            </Container>
+            </div>
 
-            {/* 🟢 MODAL SÓ É RENDERIZADO SE PUDER EDITAR */}
+            {/* ========================================================= */}
+            {/* MODAL DE CRIAÇÃO E EDIÇÃO (Com switches fixos na borda) */}
+            {/* ========================================================= */}
             {podeEditar && (
-                <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static" size="lg" contentClassName="modal-dark-fix">
-                    <Modal.Header closeButton className="border-bottom" style={{ borderColor: 'var(--border-color)' }}>
-                        <Modal.Title className="fw-bold h5" style={{ color: 'var(--text-primary)' }}>
-                            {formData.id_cargo ? 'Editar Cargo' : 'Novo Cargo'}
-                        </Modal.Title>
-                    </Modal.Header>
-                    <Form onSubmit={handleSave}>
-                        <Modal.Body className="pt-4" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
+                <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static" size="lg" contentClassName="border-0 rounded-4 shadow-lg overflow-hidden">
+                    <div className="p-4 text-white position-relative" style={{ backgroundColor: '#0f172a' }}>
+                        <button onClick={() => setShowModal(false)} className="position-absolute top-0 end-0 m-3 bg-white rounded-circle d-flex align-items-center justify-content-center shadow-sm" style={{ width: '32px', height: '32px', zIndex: 10, border: 'none' }}>
+                            <i className="bi bi-x-lg text-dark" style={{ fontSize: '14px' }}></i>
+                        </button>
+                        <h4 className="fw-bold mb-1">{formData.id_cargo ? 'Editar Cargo' : 'Novo Cargo'}</h4>
+                        <p className="mb-0 opacity-75 small">Defina o nome do cargo e escolha o que ele pode acessar na loja.</p>
+                    </div>
 
-                            <Row className="g-3 mb-4">
-                                <Col md={12}>
-                                    <Form.Floating>
-                                        <Form.Control type="text" placeholder="Nome do Cargo" value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} required className="border-0 shadow-none form-dark-fix fw-bold" />
-                                        <label>Nome do Cargo (Ex: Gerente, Atendente)</label>
-                                    </Form.Floating>
-                                </Col>
-                                <Col md={12}>
-                                    <Form.Floating>
-                                        <Form.Control type="text" placeholder="Descrição (Opcional)" value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} className="border-0 shadow-none form-dark-fix" />
-                                        <label>Descrição (Opcional)</label>
-                                    </Form.Floating>
-                                </Col>
-                            </Row>
+                    <form onSubmit={handleSave}>
+                        <Modal.Body className="p-4" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
+                            <div className="row g-3 mb-4">
+                                <div className="col-md-12">
+                                    <label className="fw-semibold small text-dark mb-1">Nome do Cargo (Ex: Gerente, Atendente)</label>
+                                    <CustomInput required value={formData.nome} onChange={(e) => setFormData({ ...formData, nome: e.target.value })} placeholder="Digite o nome..." />
+                                </div>
+                                <div className="col-md-12">
+                                    <label className="fw-semibold small text-dark mb-1">Descrição (Opcional)</label>
+                                    <CustomInput value={formData.descricao} onChange={(e) => setFormData({ ...formData, descricao: e.target.value })} placeholder="Descreva brevemente as responsabilidades..." />
+                                </div>
+                            </div>
 
-                            <hr style={{ borderColor: 'var(--border-color)', opacity: 0.5 }} />
+                            <hr style={{ borderColor: 'var(--border-color)', opacity: 0.5 }} className="mb-4" />
 
-                            <div className="mt-4">
+                            <div className="mt-2">
                                 {PERMISSOES_AGRUPADAS.map((grupo, idx) => (
                                     <div key={idx} className="mb-4">
-                                        <h6 className="fw-bold text-primary mb-3 d-flex align-items-center text-uppercase" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>{grupo.icone.startsWith('/') ? ( <img src={grupo.icone} alt={grupo.categoria} style={{ width: 22, height: 22, objectFit: 'contain', marginRight: 8 }} /> ) : ( <i className={`bi ${grupo.icone} me-2 fs-5`}></i> )} {grupo.categoria}
+                                        
+                                        {/* Título do Grupo */}
+                                        <h6 className="fw-bold text-primary mb-3 d-flex align-items-center text-uppercase" style={{ fontSize: '0.8rem', letterSpacing: '0.5px' }}>
+                                            {grupo.icone.startsWith('/') ? ( 
+                                                <img src={grupo.icone} alt={grupo.categoria} style={{ width: 20, height: 20, objectFit: 'contain', marginRight: 8, filter: 'brightness(0) saturate(100%) invert(35%) sepia(96%) saturate(2202%) hue-rotate(206deg) brightness(101%) contrast(105%)' }} /> 
+                                            ) : ( 
+                                                <i className={`bi ${grupo.icone} me-2 fs-5`}></i> 
+                                            )} 
+                                            {grupo.categoria}
                                         </h6>
 
-                                        <Row className="g-3">
+                                        {/* Permissões do Grupo */}
+                                        <div className="row g-3">
                                             {grupo.itens.map((perm) => {
                                                 const isChecked = formData.permissoes.includes(perm.id);
+                                                
                                                 return (
-                                                    <Col md={6} key={perm.id}>
-                                                        <div
-                                                            className={`p-3 rounded-3 border d-flex align-items-center cursor-pointer hover-effect ${isChecked ? 'border-primary' : ''}`}
-                                                            style={{
-                                                                borderColor: isChecked ? '' : 'var(--border-color)',
-                                                                backgroundColor: isChecked ? 'rgba(13, 110, 253, 0.05)' : 'var(--bg-main)',
-                                                                transition: 'all 0.2s'
-                                                            }}
+                                                    <div className="col-md-6" key={perm.id}>
+                                                        <div 
+                                                            className="form-check form-switch m-0 d-flex align-items-center p-3 rounded-4 border" 
+                                                            style={{ 
+                                                                cursor: 'pointer',
+                                                                borderColor: isChecked ? '#0A84FF' : 'rgba(100, 116, 139, 0.2)',
+                                                                backgroundColor: isChecked ? 'rgba(10, 132, 255, 0.05)' : 'var(--bg-main, #FFFFFF)',
+                                                                transition: 'all 0.2s ease'
+                                                            }} 
                                                             onClick={() => handleCheckboxToggle(perm.id)}
                                                         >
-                                                            <Form.Check
-                                                                type="checkbox"
-                                                                id={`perm-${perm.id}`}
-                                                                checked={isChecked}
-                                                                onChange={() => { }}
-                                                                className="me-3 shadow-none custom-checkbox"
+                                                            {/* 🟢 O segredo do fix: ms-0 anula a margem negativa que joga o botão pra fora */}
+                                                            <input 
+                                                                className="form-check-input m-0 ms-0 me-3 shadow-none flex-shrink-0" 
+                                                                type="checkbox" 
+                                                                checked={isChecked} 
+                                                                onChange={() => {}} 
+                                                                style={{ cursor: 'pointer', width: '36px', height: '18px' }}
                                                             />
-                                                            <div className="d-flex align-items-center" style={{ color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
-                                                                <i className={`bi ${perm.icon} me-2 fs-5 ${isChecked ? 'text-primary' : ''}`}></i>
-                                                                <span className="fw-medium" style={{ fontSize: '0.85rem' }}>{perm.label}</span>
-                                                            </div>
+                                                            <label className="form-check-label d-flex align-items-center m-0 w-100" style={{ cursor: 'pointer' }}>
+                                                                <i className={`bi ${perm.icon} me-2 fs-5 ${isChecked ? 'text-primary' : 'text-secondary'}`}></i>
+                                                                <span className="fw-bold" style={{ fontSize: '13px', color: isChecked ? 'var(--text-primary)' : 'var(--text-secondary)' }}>
+                                                                    {perm.label}
+                                                                </span>
+                                                            </label>
                                                         </div>
-                                                    </Col>
+                                                    </div>
                                                 );
                                             })}
-                                        </Row>
+                                        </div>
+
                                     </div>
                                 ))}
                             </div>
 
-                            <div className="text-muted small mt-4 p-3 bg-warning bg-opacity-10 rounded-3 text-warning border border-warning border-opacity-25">
+                            <div className="text-muted small mt-4 p-3 bg-warning bg-opacity-10 rounded-4 text-warning border border-warning border-opacity-25 fw-medium">
                                 <i className="bi bi-info-circle-fill me-2"></i>
                                 <strong>Atenção:</strong> O Proprietário (Dono) já possui acesso total garantido pelo sistema, por isso não precisa marcar essas opções.
                             </div>
-
                         </Modal.Body>
-                        <Modal.Footer className="border-top pt-3" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-sidebar)' }}>
-                            <Button variant="secondary" onClick={() => setShowModal(false)} className="rounded-pill px-4 bg-opacity-10 border-0 text-secondary" style={{ backgroundColor: 'var(--bg-main)' }}>Cancelar</Button>
-                            <Button variant="primary" type="submit" className="rounded-pill px-4 fw-bold shadow-sm">Salvar Cargo</Button>
+                        
+                        <Modal.Footer className="border-0 pt-0 px-4 pb-4 d-flex gap-2" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
+                            <LightButton type="button" onClick={() => setShowModal(false)} className="flex-grow-1" style={{ height: '46px' }}>
+                                Cancelar
+                            </LightButton>
+                            <CtaButton type="submit" disabled={saving} className="flex-grow-1" style={{ height: '46px' }}>
+                                {saving ? <i className="bi bi-arrow-clockwise me-2 d-inline-block" style={{ animation: 'spin 1s linear infinite' }}></i> : null}
+                                Salvar Cargo
+                            </CtaButton>
                         </Modal.Footer>
-                    </Form>
+                    </form>
                 </Modal>
             )}
-
-            <style>{`
-                .clean-card {
-                    background: var(--bg-sidebar, #ffffff);
-                    border: 1px solid var(--border-color, #e2e8f0);
-                    border-radius: 12px;
-                    overflow: hidden;
-                }
-                .table-dark-fix { --bs-table-bg: transparent; color: var(--text-primary); }
-                .table-dark-fix th { color: var(--text-secondary); font-weight: 600; border-bottom: 1px solid var(--border-color); }
-                .table-dark-fix td { border-bottom: 1px solid var(--border-color); vertical-align: middle; }
-                .hover-effect { transition: all 0.2s; }
-                .hover-effect:hover { background-color: var(--bg-hover, #f1f5f9); }
-                .cursor-pointer { cursor: pointer; }
-                
-                body.dark-mode .modal-dark-fix { background-color: var(--bg-sidebar); border-color: var(--border-color); }
-                body.dark-mode .form-dark-fix { background-color: var(--bg-main) !important; border-color: var(--border-color) !important; color: var(--text-primary) !important; }
-                body.dark-mode .form-dark-fix:focus { background-color: var(--bg-main) !important; color: var(--text-primary) !important; }
-                body.dark-mode .btn-close { filter: invert(1); }
-                body.dark-mode .form-floating > label { color: var(--text-secondary); }
-            `}</style>
         </div>
     );
 };

@@ -431,29 +431,69 @@ const OrderDetailPage = () => {
                             </tr>
                         </thead >
                         <tbody>
-                            {itemsInfo.map((item, idx) => {
-                                const nomeExibicao = item.nome || item.nome_produto || 'Item do Pedido';
-                                return (
-                                    <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
-                                        <td className="text-center align-middle fw-bold py-2">{item.quantidade}</td>
-                                        <td className="align-middle py-2">
-                                            <div className="d-flex align-items-center gap-3">
-                                                {item.imagem_url ? (
-                                                    <img src={item.imagem_url} alt={nomeExibicao} style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e2e8f0' }} />
-                                                ) : (
-                                                    <div style={{ width: '45px', height: '45px', backgroundColor: '#f1f5f9', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                                        <i className="bi bi-image text-muted"></i>
-                                                    </div>
-                                                )}
+                        {itemsInfo.map((item, idx) => {
+                            const nomeExibicao = item.nome || item.nome_produto || 'Item do Pedido';
+                            
+                            // 🟢 Tratamento seguro dos complementos
+                            let comps = [];
+                            try { 
+                                comps = typeof item.complementos === 'string' ? JSON.parse(item.complementos) : (item.complementos || []); 
+                            } catch(e){}
+
+                            // 🟢 Calcula o total dos complementos para somar ao preço do item
+                            let totalComplementosPreco = 0;
+                            comps.forEach((c) => {
+                                const precoComp = parseFloat(c.preco_adicional ?? c.preco ?? 0);
+                                const qtdComp = parseInt(c.quantidade || 1, 10);
+                                totalComplementosPreco += (precoComp * qtdComp);
+                            });
+
+                            const precoUnitarioBase = parseFloat(item.preco_unitario || item.preco || 0);
+                            const precoUnitarioFinal = precoUnitarioBase + totalComplementosPreco;
+                            const valorTotalItem = Number(item.quantidade) * precoUnitarioFinal;
+
+                            return (
+                                <tr key={idx} style={{ borderBottom: '1px solid #e2e8f0' }}>
+                                    <td className="text-center align-middle fw-bold py-2">{item.quantidade}</td>
+                                    <td className="align-middle py-2">
+                                        <div className="d-flex align-items-start gap-3">
+                                            {item.imagem_url ? (
+                                                <img src={item.imagem_url} alt={nomeExibicao} style={{ width: '45px', height: '45px', objectFit: 'cover', borderRadius: '4px', border: '1px solid #e2e8f0' }} className="mt-1" />
+                                            ) : (
+                                                <div style={{ width: '45px', height: '45px', backgroundColor: '#f1f5f9', borderRadius: '4px', display: 'flex', alignItems: 'center', justifyContent: 'center' }} className="mt-1">
+                                                    <i className="bi bi-image text-muted"></i>
+                                                </div>
+                                            )}
+                                            <div className="d-flex flex-column">
                                                 <span className="fw-medium text-dark">{nomeExibicao}</span>
-                                            </div>
-                                        </td>
-                                        <td className="text-end align-middle py-2">R$ {parseFloat(item.preco_unitario || item.preco || 0).toFixed(2)}</td>
-                                        <td className="text-end align-middle fw-bold py-2">R$ {(item.quantidade * parseFloat(item.preco_unitario || item.preco || 0)).toFixed(2)}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
+                                                
+                                                {/* 🟢 Renderização dos Detalhes, Variações, Complementos e Observações */}
+                                                {(item.cor || item.tamanho || comps.length > 0 || item.observacao) && (
+                                                    <div className="d-flex flex-column mt-1" style={{ fontSize: '11px', color: '#64748b' }}>
+                                                        {item.cor && <span>Cor: {item.cor}</span>}
+                                                        {item.tamanho && <span>Tam: {item.tamanho}</span>}
+                                                        {comps.map((c, i) => {
+                                                            const precoComp = parseFloat(c.preco_adicional ?? c.preco ?? 0);
+                                                            const nomeComp = c.nome || c.produto_add?.nome || 'Adicional';
+                                                            const precoFormatado = precoComp > 0 ? ` (R$ ${precoComp.toFixed(2)})` : '';
+                                                            return (
+                                                                <span key={i} className="fw-medium">
+                                                                    + {c.quantidade || 1}x {nomeComp}{precoFormatado}
+                                                                </span>
+                                                          );
+                                                        })}
+                                                        {item.observacao && <span className="text-danger fw-bold mt-0.5">Obs: {item.observacao}</span>}
+                                                    </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                    </td>
+                                    <td className="text-end align-middle py-2">R$ {precoUnitarioFinal.toFixed(2)}</td>
+                                    <td className="text-end align-middle fw-bold py-2">R$ {valorTotalItem.toFixed(2)}</td>
+                                </tr>
+                            );
+                        })}
+                    </tbody>
                     </Table>
                 </div>
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import { Form, Row, Col, Button } from 'react-bootstrap';
+import { CtaButton, LightButton } from '../ui/buttons/CtaButton';
 
 export const SignupStep2 = ({ formData, setFormData, handlePrevStep, handleNextStep }) => {
   const palette = {
@@ -92,12 +93,12 @@ export const SignupStep2 = ({ formData, setFormData, handlePrevStep, handleNextS
       </Form.Group>
 
       <div className="d-flex gap-3">
-        <Button variant="light" onClick={handlePrevStep} className="rounded-4 fw-bold px-4 border-0" style={{ backgroundColor: '#F4F6FA', color: palette.sub, height: '50px' }}>
-          <i className="bi bi-arrow-left"></i> Voltar
-        </Button>
-        <Button type="submit" className="flex-grow-1 rounded-4 fw-bold text-white border-0" style={{ backgroundColor: formData.primaryColor, height: '50px', boxShadow: `0 10px 24px -8px ${formData.primaryColor}80` }}>
+        <LightButton variant="light" onClick={handlePrevStep} className="rounded-4 fw-bold px-4 border-0" style={{ backgroundColor: '#F4F6FA', color: palette.sub, height: '50px' }}>
+          <i className="bi bi-arrow-left"></i>
+        </LightButton>
+        <CtaButton type="submit" className="flex-grow-1 rounded-4 fw-bold text-white border-0" style={{ backgroundColor: formData.primaryColor, height: '50px', boxShadow: `0 10px 24px -8px ${formData.primaryColor}80` }}>
           Continuar <i className="bi bi-arrow-right ms-1"></i>
-        </Button>
+        </CtaButton>
       </div>
     </Form>
   );

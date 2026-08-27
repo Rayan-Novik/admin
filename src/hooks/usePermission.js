@@ -7,6 +7,14 @@ export const usePermission = () => {
         return adminInfo ? JSON.parse(adminInfo) : null;
     });
 
+    // 🟢 Lê os módulos ativos para o sistema de Feature Flags (Bloqueio de Manutenção)
+    const [activeModules] = useState(() => {
+        const modules = localStorage.getItem('activeModules');
+        // Se não existir no localStorage, assume que o FISCAL está ativo por padrão para não quebrar sua tela
+        return modules ? JSON.parse(modules) : ['FISCAL']; 
+    });
+
+    // 🟢 Função para verificar permissão do cargo (RBAC)
     const can = (requiredPermission) => {
         if (!user) return false;
         
@@ -21,5 +29,11 @@ export const usePermission = () => {
         return false;
     };
 
-    return { can, user };
+    // 🟢 Função para verificar se o módulo está ligado (Feature Flag)
+    const isModuleActive = (moduleName) => {
+        if (!moduleName) return true;
+        return activeModules.includes(moduleName);
+    };
+
+    return { can, user, isModuleActive, activeModules };
 };

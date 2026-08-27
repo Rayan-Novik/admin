@@ -80,9 +80,10 @@ const MENU_GROUPS_CONFIG = [
         title: "Fiscal",
         icon: "bi bi-building",
         id: "Fiscal",
+        requiredModule: "FISCAL", 
         items: [
             { to: "/admin/notas-fiscais", icon: "bi bi-receipt-cutoff", text: "Notas de Saída", permission: "FINANCEIRO_VIEW" },
-            { to: "/admin/notas-entrada", icon: "bi bi-box-arrow-in-down", text: "Notas de Entrada", permission: "ESTOQUE_MANAGE" }, // 🟢 NOVO BOTÃO
+            { to: "/admin/notas-entrada", icon: "bi bi-box-arrow-in-down", text: "Notas de Entrada", permission: "ESTOQUE_MANAGE" },
             { to: "/admin/config-fiscal", icon: "bi bi-building-gear", text: "Configuração Fiscal", permission: "CONFIG_INTEGRATIONS" },
         ]
     },
@@ -101,6 +102,7 @@ const MENU_GROUPS_CONFIG = [
         id: "saas_master",
         items: [
             { to: "/admin/saas/tenants", icon: "bi bi-buildings", text: "Empresas Cadastradas" },
+            { to: "/admin/saas/modulos", icon: "bi bi-puzzle", text: "Controle de Módulos" },
             { to: "/admin/saas/planos", icon: "bi bi-tags", text: "Gerenciar Planos" },
             { to: "/admin/saas/faturamento", icon: "bi bi-pie-chart", text: "Faturamento Global" },
             { to: "/admin/saas/whatsapp", icon: "bi bi-whatsapp", text: "WhatsApp Central" },
@@ -132,6 +134,9 @@ const Sidebar = ({ onLogout }) => {
     const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
     const roleUsuario = adminInfo.role || 'USER';
     const meuId = (adminInfo.id_usuario === 'DONO' || roleUsuario === 'ADMIN') ? 0 : Number(adminInfo.id_usuario || -1);
+
+    // 🟢 Busca os módulos ativos no momento (padrão com FISCAL ativado para evitar quebrar antes de você configurar a API)
+    const activeModules = JSON.parse(localStorage.getItem('activeModules') || '["FISCAL", "PDV", "IFOOD"]');
 
     useEffect(() => {
         const unlockAudio = () => {
@@ -211,13 +216,28 @@ const Sidebar = ({ onLogout }) => {
         return () => clearInterval(interval);
     }, [can, meuId, location.pathname]);
 
+    // 🟢 Filtragem inteligente dos menus
     const filteredMenuGroups = MENU_GROUPS_CONFIG
         .map(group => {
+            // Esconde o menu SaaS se não for o dono principal
             if (group.id === 'saas_master' && !isMasterTenant) return null;
+
+            // Esconde o grupo inteiro se o módulo estiver bloqueado
+            if (group.requiredModule && !activeModules.includes(group.requiredModule)) {
+                return null;
+            }
+
             const visibleItems = group.items.filter(item => {
+                // Esconde um botão específico se aquele recurso estiver bloqueado
+                if (item.requiredModule && !activeModules.includes(item.requiredModule)) {
+                    return false;
+                }
+
+                // Checa as permissões normais do usuário
                 if (!item.permission) return true;
                 return can(item.permission);
             });
+
             if (visibleItems.length > 0) return { ...group, items: visibleItems };
             return null;
         })

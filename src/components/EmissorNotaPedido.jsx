@@ -1,19 +1,49 @@
 import React, { useState } from 'react';
 import api from '../services/api'; // Ajuste o caminho se necessário
 
+// 🟢 1. Importa o hook de permissões
+import { usePermission } from '../hooks/usePermission'; 
+
 export default function EmissorNotaPedido({ idPedido, notaInicial }) {
-    // 🟢 Agora o estado é um Array. Aceita múltiplas notas pro mesmo pedido.
+    // 🟢 2. Puxa a função que verifica os módulos
+    const { isModuleActive } = usePermission(); 
+    const isFiscalActive = isModuleActive('FISCAL'); // Checa se o Fiscal está ligado
+
+    // Agora o estado é um Array. Aceita múltiplas notas pro mesmo pedido.
     const [notas, setNotas] = useState(
         notaInicial ? (Array.isArray(notaInicial) ? notaInicial : [notaInicial]) : []
     );
     const [loading, setLoading] = useState(false);
     const [erro, setErro] = useState('');
 
+    // ==========================================
+    // 🟢 3. SE O MÓDULO ESTIVER DESLIGADO, MOSTRA O AVISO E PARA POR AQUI
+    // ==========================================
+    if (!isFiscalActive) {
+        return (
+            <div className="card border-warning mb-4 shadow-sm">
+                <div className="card-header bg-warning bg-opacity-10 text-warning-emphasis d-flex justify-content-between align-items-center">
+                    <strong><i className="bi bi-tools me-2"></i>Módulo Fiscal</strong>
+                    <span className="badge bg-warning text-dark">Em Manutenção</span>
+                </div>
+                <div className="card-body text-center py-4">
+                    <p className="text-muted mb-0">
+                        A emissão e o gerenciamento de documentos fiscais estão temporariamente desativados para melhorias no sistema. Tente novamente mais tarde.
+                    </p>
+                </div>
+            </div>
+        );
+    }
+
+    // ==========================================
+    // SE ESTIVER ATIVO, CONTINUA O CÓDIGO NORMALMENTE
+    // ==========================================
+
     const gerarRascunho = async (tipoNota) => {
         setLoading(true);
         setErro('');
         try {
-            // 🟢 ATUALIZADO: Aponta para a nova rota de saída
+            // ATUALIZADO: Aponta para a nova rota de saída
             const { data } = await api.post('/fiscal/saida/rascunho', {
                 id_pedido: idPedido,
                 tipo_nota: tipoNota
@@ -31,7 +61,7 @@ export default function EmissorNotaPedido({ idPedido, notaInicial }) {
         setLoading(true);
         setErro('');
         try {
-            // 🟢 MUDOU AQUI: Tiramos a palavra "simular" da rota!
+            // MUDOU AQUI: Tiramos a palavra "simular" da rota!
             const { data } = await api.post(`/fiscal/saida/${notaAlvo.id_nota}/emitir`);
             
             setNotas(prev => prev.map(n => n.id_nota === notaAlvo.id_nota ? data.nota : n));
@@ -68,7 +98,7 @@ export default function EmissorNotaPedido({ idPedido, notaInicial }) {
             <div className="card-body">
                 {erro && <div className="alert alert-danger py-2">{erro}</div>}
 
-                {/* 🟢 SESSÃO 1: LISTA DE NOTAS JÁ GERADAS */}
+                {/* SESSÃO 1: LISTA DE NOTAS JÁ GERADAS */}
                 {notas.length > 0 && (
                     <div className="mb-4">
                         <h6 className="fw-bold text-muted border-bottom pb-2 mb-3">Documentos Fiscais do Pedido</h6>
@@ -103,7 +133,7 @@ export default function EmissorNotaPedido({ idPedido, notaInicial }) {
                     </div>
                 )}
 
-                {/* 🟢 SESSÃO 2: BOTÕES PARA GERAR (Somente o que falta) */}
+                {/* SESSÃO 2: BOTÕES PARA GERAR (Somente o que falta) */}
                 {(!temNotaProduto || !temNotaServico) && (
                     <div>
                         <p className="text-muted small mb-2">

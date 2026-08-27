@@ -4,36 +4,36 @@ import ProductSearch from '../../components/modules/pdvManager/ProductSearch';
 import Cart from '../../components/modules/pdvManager/Cart';
 import CaixaModal from '../../components/modules/pdvManager/CaixaModal';
 import PaymentModal from '../../components/modules/pdvManager/PaymentModal';
-import MovimentacaoModal from '../../components/modules/pdvManager/MovimentacaoModal'; 
-import ClienteModal from '../../components/modules/pdvManager/ClienteModal'; 
-import SalesHistory from '../../components/modules/pdvManager/SalesHistory'; 
+import MovimentacaoModal from '../../components/modules/pdvManager/MovimentacaoModal';
+import ClienteModal from '../../components/modules/pdvManager/ClienteModal';
+import SalesHistory from '../../components/modules/pdvManager/SalesHistory';
 import DailyReportModal from '../../components/modules/pdvManager/DailyReportModal';
-import BarcodeScannerModal from '../../components/modules/pdvManager/BarcodeScannerModal'; 
-import CaixaComandas from '../../components/comanda/CaixaComandas'; 
+import BarcodeScannerModal from '../../components/modules/pdvManager/BarcodeScannerModal';
+import CaixaComandas from '../../components/comanda/CaixaComandas';
 import AgendamentosCaixa from '../../components/modules/pdvManager/AgendamentosCaixa'; // 🟢 NOVO IMPORT
 
 // Importando componentes de Comanda
-import ComandaList from '../../components/comanda/ComandaList'; 
-import ComandaDetalhe from '../../components/comanda/ComandaDetalhe'; 
+import ComandaList from '../../components/comanda/ComandaList';
+import ComandaDetalhe from '../../components/comanda/ComandaDetalhe';
 
 import { LogOut, User, Tag, XCircle, Clock, ArrowUpCircle, ArrowDownCircle, Printer, ShoppingCart, Menu, ScanLine, Receipt, LayoutGrid, ArrowLeft, CalendarClock } from 'lucide-react'; // 🟢 ADD CalendarClock
-import { Offcanvas, Button, Badge } from 'react-bootstrap'; 
+import { Offcanvas, Button, Badge } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import { usePermission } from '../../hooks/usePermission';
-import api from '../../services/api'; 
+import api from '../../services/api';
 
 export default function PDV() {
     const { can } = usePermission();
-    const podeMovimentarCaixa = can('FINANCEIRO_MANAGE'); 
-    const podeVerRelatorio = can('FINANCEIRO_VIEW'); 
+    const podeMovimentarCaixa = can('FINANCEIRO_MANAGE');
+    const podeVerRelatorio = can('FINANCEIRO_VIEW');
 
-    const [abaAtiva, setAbaAtiva] = useState('PDV'); 
+    const [abaAtiva, setAbaAtiva] = useState('PDV');
     const [statusCaixa, setStatusCaixa] = useState('FECHADO');
-    const [resumo, setResumo] = useState(null); 
+    const [resumo, setResumo] = useState(null);
     const [loadingInit, setLoadingInit] = useState(true);
     const [cart, setCart] = useState([]);
     const [clienteSelecionado, setClienteSelecionado] = useState(null);
-    
+
     // Controle da mesa que está sendo visualizada/editada no caixa
     const [mesaSelecionada, setMesaSelecionada] = useState(null);
 
@@ -42,11 +42,11 @@ export default function PDV() {
     const [modalMovimentacao, setModalMovimentacao] = useState({ open: false, tipo: 'ENTRADA' });
     const [modalClienteOpen, setModalClienteOpen] = useState(false);
     const [modalRelatorioOpen, setModalRelatorioOpen] = useState(false);
-    const [showMobileCart, setShowMobileCart] = useState(false); 
-    const [showMobileMenu, setShowMobileMenu] = useState(false); 
+    const [showMobileCart, setShowMobileCart] = useState(false);
+    const [showMobileMenu, setShowMobileMenu] = useState(false);
 
     const [modalScannerOpen, setModalScannerOpen] = useState(false);
-    const barcodeBuffer = useRef(''); 
+    const barcodeBuffer = useRef('');
     const barcodeTimeout = useRef(null);
     const isProcessingRef = useRef(false);
 
@@ -58,7 +58,7 @@ export default function PDV() {
             try {
                 const { data } = await api.get('/comandas');
                 const comandaAtual = data.find(c => c.id_pedido === mesaSelecionada.id_pedido);
-                
+
                 if (comandaAtual && (!comandaAtual.pedido_items || comandaAtual.pedido_items.length === 0)) {
                     const confirmar = window.confirm("A mesa está vazia.\nDeseja cancelar o atendimento e liberá-la?");
                     if (confirmar) {
@@ -88,13 +88,13 @@ export default function PDV() {
 
         if (isProcessingRef.current) return;
         isProcessingRef.current = true;
-        
+
         try {
             const data = await buscarProdutos(codigo, 'geral');
             if (data && data.length === 1) {
-                handleAddProduct(data[0]); 
+                handleAddProduct(data[0]);
                 toast.success(`✅ ${data[0].nome} adicionado!`);
-                setModalScannerOpen(false); 
+                setModalScannerOpen(false);
             } else if (data && data.length > 1) {
                 toast.warning(`Atenção: Mais de um produto compartilha o código: ${codigo}. Use a barra de pesquisa.`);
             } else {
@@ -121,19 +121,19 @@ export default function PDV() {
                         return;
                     }
 
-                    if (e.key.length === 1) { 
+                    if (e.key.length === 1) {
                         barcodeBuffer.current += e.key;
                         clearTimeout(barcodeTimeout.current);
                         barcodeTimeout.current = setTimeout(() => {
-                            barcodeBuffer.current = ''; 
-                        }, 100); 
+                            barcodeBuffer.current = '';
+                        }, 100);
                     }
                 }
             }
         };
         window.addEventListener('keydown', handleKeyDown);
         return () => window.removeEventListener('keydown', handleKeyDown);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cart, statusCaixa, abaAtiva]);
 
     const loadStatus = async () => {
@@ -141,7 +141,7 @@ export default function PDV() {
         try {
             const data = await getStatusCaixa();
             setStatusCaixa(data.status);
-            if (data.status === 'ABERTO') { setResumo(data.dados); } 
+            if (data.status === 'ABERTO') { setResumo(data.dados); }
             else { setModalCaixaOpen(true); setResumo(null); }
         } catch (error) {
             console.error('Erro ao verificar caixa:', error);
@@ -171,8 +171,8 @@ export default function PDV() {
         setModalPaymentOpen(false);
         setCart([]);
         setClienteSelecionado(null);
-        setShowMobileCart(false); 
-        loadStatus(); 
+        setShowMobileCart(false);
+        loadStatus();
         toast.success(`Venda Realizada! Cupom #${result.pedido.id_pedido}`);
     };
 
@@ -187,7 +187,7 @@ export default function PDV() {
 
     return (
         <div className="d-flex flex-column flex-md-row vh-100 overflow-hidden position-relative" style={{ backgroundColor: 'var(--bg-main)' }}>
-            
+
             <div className="d-md-none p-3 d-flex justify-content-between align-items-center border-bottom shadow-sm z-3" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}>
                 <Button variant="light" className="p-2 border-0 bg-transparent" onClick={() => setShowMobileMenu(true)} style={{ color: 'var(--text-primary)' }}>
                     <Menu size={24} />
@@ -197,7 +197,7 @@ export default function PDV() {
                     <Button variant="light" className="p-1 border-0 bg-transparent text-primary" onClick={() => setModalScannerOpen(true)} title="Câmera">
                         <ScanLine size={24} />
                     </Button>
-                     <span className={`badge rounded-pill ${statusCaixa === 'ABERTO' ? 'bg-success' : 'bg-danger'}`} style={{fontSize: '10px'}}>
+                    <span className={`badge rounded-pill ${statusCaixa === 'ABERTO' ? 'bg-success' : 'bg-danger'}`} style={{ fontSize: '10px' }}>
                         {statusCaixa === 'ABERTO' ? 'CAIXA ABERTO' : 'FECHADO'}
                     </span>
                 </div>
@@ -210,7 +210,7 @@ export default function PDV() {
                             <ShoppingCart size={22} className="mb-1" />
                             <small style={{ fontSize: '10px', fontWeight: '600' }}>CAIXA</small>
                         </button>
-                        
+
                         <button onClick={() => mudarAba('MESAS')} className={`btn border-0 rounded-4 py-3 d-flex flex-column align-items-center transition-all ${abaAtiva === 'MESAS' ? 'bg-primary text-white shadow-sm' : 'bg-transparent text-secondary hover-bg'}`}>
                             <LayoutGrid size={22} className="mb-1" />
                             <small style={{ fontSize: '10px', fontWeight: '600' }}>MESAS</small>
@@ -261,19 +261,19 @@ export default function PDV() {
                         {resumo && <Badge bg="secondary" className="bg-opacity-10 text-secondary border rounded-pill fw-medium px-3 py-2">SALDO: R$ {Number(resumo.saldo_sistema).toFixed(2)}</Badge>}
                     </div>
                     <div className="d-flex align-items-center gap-3">
-                        
-                        <Button 
-                            variant={abaAtiva === 'MESAS' ? "primary" : "outline-secondary"} 
-                            className="rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-2 border-0" 
+
+                        <Button
+                            variant={abaAtiva === 'MESAS' ? "primary" : "outline-secondary"}
+                            className="rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-2 border-0"
                             style={{ backgroundColor: abaAtiva === 'MESAS' ? '' : 'var(--bg-main)' }}
                             onClick={() => mudarAba('MESAS')}
                         >
                             <LayoutGrid size={18} /> Ver Mesas
                         </Button>
 
-                        <Button 
-                            variant={abaAtiva === 'COMANDAS' ? "primary" : "outline-secondary"} 
-                            className="rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-2 border-0" 
+                        <Button
+                            variant={abaAtiva === 'COMANDAS' ? "primary" : "outline-secondary"}
+                            className="rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-2 border-0"
                             style={{ backgroundColor: abaAtiva === 'COMANDAS' ? '' : 'var(--bg-main)' }}
                             onClick={() => mudarAba('COMANDAS')}
                         >
@@ -281,9 +281,9 @@ export default function PDV() {
                         </Button>
 
                         {/* 🟢 NOVA ABA AGENDAMENTOS DESKTOP */}
-                        <Button 
-                            variant={abaAtiva === 'AGENDAMENTOS' ? "primary" : "outline-secondary"} 
-                            className="rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-2 border-0" 
+                        <Button
+                            variant={abaAtiva === 'AGENDAMENTOS' ? "primary" : "outline-secondary"}
+                            className="rounded-pill px-3 py-2 fw-bold d-flex align-items-center gap-2 border-0"
                             style={{ backgroundColor: abaAtiva === 'AGENDAMENTOS' ? '' : 'var(--bg-main)' }}
                             onClick={() => mudarAba('AGENDAMENTOS')}
                         >
@@ -319,7 +319,7 @@ export default function PDV() {
                             </div>
                         )
                     )}
-                    
+
                     {abaAtiva === 'MESAS' && (
                         <div className="h-100 d-flex flex-column">
                             {mesaSelecionada ? (
@@ -331,15 +331,18 @@ export default function PDV() {
                                         <h5 className="mb-0 ms-4 fw-bold text-primary">Editando Mesa {mesaSelecionada.codigo_comanda}</h5>
                                     </div>
                                     <div className="flex-grow-1 overflow-auto p-3">
-                                        <ComandaDetalhe 
-                                            comandaOriginal={mesaSelecionada} 
-                                            aoFechamentoCompleto={() => setMesaSelecionada(null)} 
+                                        <ComandaDetalhe
+                                            comandaOriginal={mesaSelecionada}
+                                            aoFechamentoCompleto={() => setMesaSelecionada(null)}
                                         />
                                     </div>
                                 </>
                             ) : (
                                 <div className="p-3 h-100 overflow-auto">
-                                    <ComandaList aoSelecionarComanda={(comanda) => setMesaSelecionada(comanda)} />
+                                    <ComandaList
+                                        aoClicarMesaLivre={() => toast.info("Mesa livre. Os atendimentos devem ser iniciados pelo Salão ou QR Code.")}
+                                        aoClicarMesaOcupada={(mesa, comanda) => setMesaSelecionada(comanda)}
+                                    />
                                 </div>
                             )}
                         </div>
@@ -394,10 +397,10 @@ export default function PDV() {
 
             <Offcanvas show={showMobileCart} onHide={() => setShowMobileCart(false)} placement="bottom" className="d-md-none rounded-top-4" style={{ height: '85vh', backgroundColor: 'var(--bg-sidebar)' }}>
                 <Offcanvas.Header closeButton className="border-bottom py-3" style={{ borderColor: 'var(--border-color)' }}>
-                    <Offcanvas.Title className="fs-6 fw-bold d-flex align-items-center" style={{ color: 'var(--text-primary)' }}><ShoppingCart size={20} className="me-2 text-primary"/> Cesta de Compras</Offcanvas.Title>
+                    <Offcanvas.Title className="fs-6 fw-bold d-flex align-items-center" style={{ color: 'var(--text-primary)' }}><ShoppingCart size={20} className="me-2 text-primary" /> Cesta de Compras</Offcanvas.Title>
                 </Offcanvas.Header>
                 <Offcanvas.Body className="p-0 d-flex flex-column">
-                     {clienteSelecionado && (
+                    {clienteSelecionado && (
                         <div className="p-3 bg-primary bg-opacity-10 border-bottom d-flex justify-content-between align-items-center" style={{ borderColor: 'var(--border-color)' }}>
                             <div className="d-flex align-items-center gap-2 text-primary fw-semibold" style={{ fontSize: '13px' }}><User size={16} /><span className="text-truncate">{clienteSelecionado.nome || clienteSelecionado.nome_completo}</span></div>
                             <button className="btn btn-sm btn-link text-danger p-0 m-0 border-0" onClick={() => setClienteSelecionado(null)}><XCircle size={18} /></button>
@@ -412,7 +415,7 @@ export default function PDV() {
             <MovimentacaoModal isOpen={modalMovimentacao.open} tipoInicial={modalMovimentacao.tipo} onClose={() => setModalMovimentacao({ ...modalMovimentacao, open: false })} onSuccess={() => loadStatus()} />
             <ClienteModal isOpen={modalClienteOpen} onClose={() => setModalClienteOpen(false)} onSelectCliente={(c) => { setClienteSelecionado(c); setModalClienteOpen(false); }} />
             <DailyReportModal isOpen={modalRelatorioOpen} onClose={() => setModalRelatorioOpen(false)} />
-            
+
             <BarcodeScannerModal isOpen={modalScannerOpen} onClose={() => setModalScannerOpen(false)} onScan={processarCodigoBarras} />
 
             <style>{`.hover-bg:hover { background-color: var(--bg-hover) !important; } .cursor-pointer { cursor: pointer; } body.dark-mode .btn-close { filter: invert(1); }

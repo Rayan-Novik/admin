@@ -112,34 +112,53 @@ export default function ComandasPage() {
     setLoadingAcao(true);
     try {
         let idPedidoAlvo = comandaAberta?.id_pedido;
+        
         if (!idPedidoAlvo) {
-            const { data } = await api.post('/comandas/abrir', { codigo_comanda: mesaContexto.nome, nome_cliente: '' });
-            idPedidoAlvo = data.comanda.id_pedido;
-            if (mesaContexto.status === 'RESERVADA') {
-                await api.put(`/mesas/${mesaContexto.id_mesa}`, { nome: mesaContexto.nome, status: 'OCUPADA' });
+            try {
+                const { data } = await api.post('/comandas/abrir', { codigo_comanda: mesaContexto.nome, nome_cliente: '' });
+                idPedidoAlvo = data.comanda.id_pedido;
+                if (mesaContexto.status === 'RESERVADA') {
+                    await api.put(`/mesas/${mesaContexto.id_mesa}`, { nome: mesaContexto.nome, status: 'OCUPADA' });
+                }
+            } catch (err) {
+                if (err.response?.status === 400) {
+                    const { data: comandasAtualizadas } = await api.get('/comandas');
+                    const comandaCliente = comandasAtualizadas.find(c => c.codigo_comanda === mesaContexto.nome);
+                    if (comandaCliente) {
+                        idPedidoAlvo = comandaCliente.id_pedido;
+                    } else {
+                        throw err;
+                    }
+                } else {
+                    throw err;
+                }
             }
         }
 
+        // 🟢 MÁGICA: Agora o garçom também envia os complementos pro banco!
         for (const item of carrinho) {
-            await api.post(`/comandas/${idPedidoAlvo}/itens`, { id_produto: item.produto.id_produto, quantidade: item.quantidade });
+            await api.post(`/comandas/${idPedidoAlvo}/itens`, { 
+              id_produto: item.produto.id_produto, 
+              quantidade: item.quantidade,
+              complementos: item.complementos || [] 
+            });
         }
 
-        // 📱 O Celular só avisa o backend. O backend se vira com o caixa.
         await api.post(`/comandas/${idPedidoAlvo}/imprimir-cozinha`);
         
         toast.success("Enviado para a cozinha!");
         if (window.navigator && window.navigator.vibrate) window.navigator.vibrate([50, 50, 50]);
 
-        const { data: comandasAtualizadas } = await api.get('/comandas');
+        const { data: comandasFinais } = await api.get('/comandas');
         setCarrinho([]);
-        setComandaAberta(comandasAtualizadas.find(c => c.id_pedido === idPedidoAlvo));
+        setComandaAberta(comandasFinais.find(c => c.id_pedido === idPedidoAlvo));
         setTelaAtiva('detalhe');
     } catch (error) {
-        toast.error("Erro ao enviar pedido.");
+        toast.error(error.response?.data?.message || "Erro ao enviar pedido.");
     } finally {
         setLoadingAcao(false);
     }
-};
+  };
 
   // 🟢 AÇÃO CENTRAL: Pedir a Conta
   const acaoPedirConta = async () => {
@@ -179,7 +198,7 @@ export default function ComandasPage() {
 
       <main className="flex-grow-1 overflow-auto bg-light pb-5 mb-5">
         {telaAtiva === 'lista' && <ComandaList aoClicarMesaLivre={handleMesaLivre} aoClicarMesaOcupada={handleMesaOcupada} />}
-        {telaAtiva === 'detalhe' && <ComandaDetalhe comandaOriginal={comandaAberta} atualizarComandaBase={setComandaAberta} />}
+        {telaAtiva === 'detalhe' && <ComandaDetalhe comandaOriginal={comandaAberta} atualizarComandaBase={setComandaAberta} mesaContexto={mesaContexto} />}
         {telaAtiva === 'catalogo' && <ProdutoCatalogo carrinho={carrinho} setCarrinho={setCarrinho} />}
         {telaAtiva === 'revisao' && <RevisaoPedido carrinho={carrinho} setCarrinho={setCarrinho} aoVoltar={() => setTelaAtiva('catalogo')} />}
       </main>

@@ -1,13 +1,14 @@
 import React from 'react';
-import { Form, Row, Col, InputGroup, Button, Spinner } from 'react-bootstrap';
+import { Form, Row, Col, Button, Spinner } from 'react-bootstrap';
+import { CtaButton } from '../ui/buttons/CtaButton';
+import { CustomInput } from '../ui/SearchInput/SearchInput';
 
 export const SignupStep1 = ({
   formData,
   setFormData,
   planos,
   loadingPlanos,
-  showPassword,
-  setShowPassword,
+  // showPassword e setShowPassword não são mais necessários aqui!
   handleNextStep
 }) => {
   const handleDocumentoChange = (e) => {
@@ -34,7 +35,7 @@ export const SignupStep1 = ({
     setFormData(prev => ({ ...prev, telefone: formatado }));
   };
 
-  /* ---------- ESTILOS INLINE ---------- */
+  /* ---------- ESTILOS INLINE MANTIDOS APENAS PARA OS CARDS DE PLANO ---------- */
   const palette = {
     brand: formData.primaryColor || '#0A84FF',
     ink: '#0F172A',
@@ -44,22 +45,6 @@ export const SignupStep1 = ({
 
   const styles = {
     label: { fontSize: 12, fontWeight: 600, color: palette.sub, textTransform: 'none', marginBottom: 6 },
-    inputWrap: { background: '#F4F6FA', border: `1px solid ${palette.line}`, borderRadius: 14, transition: 'all .2s ease', overflow: 'hidden' },
-    inputText: { background: 'transparent', border: 0, height: 48, fontSize: 15, color: palette.ink, boxShadow: 'none' },
-    iconBox: { color: palette.brand, background: 'transparent', border: 0 },
-    cta: { height: 50, borderRadius: 14, border: 0, background: palette.brand, color: '#fff', fontWeight: 600, fontSize: 15, boxShadow: `0 10px 24px -8px ${palette.brand}80`, transition: 'all .2s ease' }
-  };
-
-  // Efeitos de foco nos inputs
-  const handleFocus = (e) => {
-    e.currentTarget.style.borderColor = palette.brand;
-    e.currentTarget.style.background = '#fff';
-    e.currentTarget.style.boxShadow = `0 0 0 4px ${palette.brand}20`;
-  };
-  const handleBlur = (e) => {
-    e.currentTarget.style.borderColor = palette.line;
-    e.currentTarget.style.background = '#F4F6FA';
-    e.currentTarget.style.boxShadow = 'none';
   };
 
   return (
@@ -141,75 +126,95 @@ export const SignupStep1 = ({
         )}
       </Form.Group>
 
+      {/* --- FORMULÁRIO ENXUTO USANDO O CustomInput --- */}
       <Row>
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label style={styles.label}>Nome da Loja</Form.Label>
-            <InputGroup style={styles.inputWrap} onFocus={handleFocus} onBlur={handleBlur}>
-              <InputGroup.Text style={styles.iconBox} className="ps-3"><i className="bi bi-shop fs-5"></i></InputGroup.Text>
-              <Form.Control type="text" placeholder="Moda Express" value={formData.nomeFantasia || ''} onChange={(e) => setFormData(prev => ({ ...prev, nomeFantasia: e.target.value }))} required style={styles.inputText} />
-            </InputGroup>
+            <CustomInput
+              icon="bi-shop"
+              placeholder="Moda Express"
+              value={formData.nomeFantasia || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, nomeFantasia: e.target.value }))}
+              required
+            />
           </Form.Group>
         </Col>
+        
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label style={styles.label}>Razão Social</Form.Label>
-            <InputGroup style={styles.inputWrap} onFocus={handleFocus} onBlur={handleBlur}>
-              <InputGroup.Text style={styles.iconBox} className="ps-3"><i className="bi bi-person-badge fs-5"></i></InputGroup.Text>
-              <Form.Control type="text" placeholder="Nome da empresa" value={formData.razaoSocial || ''} onChange={(e) => setFormData(prev => ({ ...prev, razaoSocial: e.target.value }))} required style={styles.inputText} />
-            </InputGroup>
+            <CustomInput
+              icon="bi-person-badge"
+              placeholder="Nome da empresa"
+              value={formData.razaoSocial || ''}
+              onChange={(e) => setFormData(prev => ({ ...prev, razaoSocial: e.target.value }))}
+              required
+            />
           </Form.Group>
         </Col>
+
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label style={styles.label}>CPF ou CNPJ</Form.Label>
-            <InputGroup style={styles.inputWrap} onFocus={handleFocus} onBlur={handleBlur}>
-              <InputGroup.Text style={styles.iconBox} className="ps-3"><i className="bi bi-card-text fs-5"></i></InputGroup.Text>
-              <Form.Control type="text" placeholder="000.000.000-00" value={formData.documento || ''} onChange={handleDocumentoChange} required style={styles.inputText} />
-            </InputGroup>
+            <CustomInput
+              icon="bi-card-text"
+              placeholder="000.000.000-00"
+              value={formData.documento || ''}
+              onChange={handleDocumentoChange}
+              required
+            />
           </Form.Group>
         </Col>
+
         <Col md={6}>
           <Form.Group className="mb-3">
             <Form.Label style={styles.label}>WhatsApp</Form.Label>
-            <InputGroup style={styles.inputWrap} onFocus={handleFocus} onBlur={handleBlur}>
-              <InputGroup.Text style={styles.iconBox} className="ps-3"><i className="bi bi-whatsapp fs-5"></i></InputGroup.Text>
-              <Form.Control type="text" placeholder="(00) 00000-0000" value={formData.telefone || ''} onChange={handleTelefoneChange} required style={styles.inputText} />
-            </InputGroup>
+            <CustomInput
+              icon="bi-whatsapp"
+              placeholder="(00) 00000-0000"
+              value={formData.telefone || ''}
+              onChange={handleTelefoneChange}
+              required
+            />
           </Form.Group>
         </Col>
       </Row>
 
       <Form.Group className="mb-3">
         <Form.Label style={styles.label}>E-mail de Acesso</Form.Label>
-        <InputGroup style={styles.inputWrap} onFocus={handleFocus} onBlur={handleBlur}>
-          <InputGroup.Text style={styles.iconBox} className="ps-3"><i className="bi bi-envelope fs-5"></i></InputGroup.Text>
-          <Form.Control type="email" placeholder="admin@loja.com" value={formData.email || ''} onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))} required style={styles.inputText} />
-        </InputGroup>
+        <CustomInput
+          icon="bi-envelope"
+          type="email"
+          placeholder="admin@loja.com"
+          value={formData.email || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+          required
+        />
       </Form.Group>
 
       <Form.Group className="mb-4">
         <Form.Label style={styles.label}>Senha</Form.Label>
-        <InputGroup style={styles.inputWrap} onFocus={handleFocus} onBlur={handleBlur}>
-          <InputGroup.Text style={styles.iconBox} className="ps-3"><i className="bi bi-lock fs-5"></i></InputGroup.Text>
-          <Form.Control type={showPassword ? 'text' : 'password'} placeholder="Mínimo 6 caracteres" value={formData.senha || ''} onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))} required minLength={6} style={styles.inputText} />
-          <Button variant="link" className="text-decoration-none pe-3 text-secondary" onClick={() => setShowPassword(!showPassword)} type="button">
-            <i className={`bi ${showPassword ? 'bi-eye-slash-fill' : 'bi-eye-fill'}`}></i>
-          </Button>
-        </InputGroup>
+        <CustomInput
+          icon="bi-lock"
+          type="password"
+          placeholder="Mínimo 6 caracteres"
+          value={formData.senha || ''}
+          onChange={(e) => setFormData(prev => ({ ...prev, senha: e.target.value }))}
+          required
+          minLength={6}
+        />
       </Form.Group>
 
-      <div className="d-grid mb-3">
-        <Button 
-          type="submit" 
-          disabled={loadingPlanos} 
-          style={styles.cta}
-          onMouseEnter={(e) => { if(!loadingPlanos) e.currentTarget.style.filter = 'brightness(1.06)'; }}
-          onMouseLeave={(e) => { e.currentTarget.style.filter = 'none'; }}
-        >
-          Continuar <i className="bi bi-arrow-right ms-2 align-middle"></i>
-        </Button>
-      </div>
+      <CtaButton 
+        type="submit" 
+        color={palette.brand} 
+        disabled={loadingPlanos}
+        fullWidth={true}
+        className="mb-3"
+      >
+        Continuar <i className="bi bi-arrow-right ms-2 align-middle"></i>
+      </CtaButton>
     </Form>
   );
 };

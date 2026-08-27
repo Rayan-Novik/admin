@@ -1,8 +1,12 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { Card, Form, InputGroup, Button, Table, Badge } from 'react-bootstrap';
+import { Form } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 
-// Tabela de Conversão Simples
+// Importando nossos componentes universais
+import { CustomInput } from '../../ui/SearchInput/SearchInput';
+import { GreenSquareButton, RedSquareButton } from '../../ui/buttons/SquareButton';
+import { FlatListContainer, FlatListHeader, FlatListItem } from '../../ui/listagem/FlatList';
+
 const UNIT_CONVERSIONS = {
     'KG':  { targets: ['KG', 'G'],       factors: { 'KG': 1, 'G': 0.001 } },
     'G':   { targets: ['G', 'KG'],       factors: { 'G': 1, 'KG': 1000 } },
@@ -18,25 +22,20 @@ const ProductRecipe = ({ allProducts, composition, setComposition, onUpdateCalcu
     const [qty, setQty] = useState(1);
     const [selectedUnit, setSelectedUnit] = useState('');
 
-    // Busca o produto selecionado na lista completa
     const selectedProduct = useMemo(() => 
         allProducts.find(p => p.id_produto === Number(selectedId)), 
     [selectedId, allProducts]);
 
-    // Define as unidades disponíveis com base na unidade do estoque do produto
     const availableUnits = useMemo(() => {
         if (!selectedProduct) return [];
         const baseUnit = selectedProduct.unidade || 'UN';
         return UNIT_CONVERSIONS[baseUnit]?.targets || [baseUnit];
     }, [selectedProduct]);
 
-    // Reseta unidade ao trocar produto
     useEffect(() => {
         if (selectedProduct) setSelectedUnit(availableUnits[0]);
     }, [selectedProduct, availableUnits]);
 
-    // ✅ LÓGICA DE CÁLCULO GERAL (Custo e Estoque Potencial)
-    // Envia os dados calculados para o Pai sempre que a receita muda
     useEffect(() => {
         let totalCost = 0;
         let minStockPossible = Infinity;
@@ -49,14 +48,11 @@ const ProductRecipe = ({ allProducts, composition, setComposition, onUpdateCalcu
         composition.forEach(item => {
             const originalProd = allProducts.find(p => p.id_produto === item.id_insumo);
             if (originalProd) {
-                // Custo
                 const costPerBaseUnit = Number(originalProd.preco_custo || 0);
-                const costOfItem = costPerBaseUnit * item.quantidade_real; // quantidade já convertida
+                const costOfItem = costPerBaseUnit * item.quantidade_real;
                 totalCost += costOfItem;
 
-                // Estoque (Gargalo)
                 const currentStock = Number(originalProd.estoque || 0);
-                // Quantos consigo fazer? (Estoque / Qtd que gasta por item)
                 const possible = Math.floor(currentStock / item.quantidade_real);
                 if (possible < minStockPossible) minStockPossible = possible;
             }
@@ -74,9 +70,6 @@ const ProductRecipe = ({ allProducts, composition, setComposition, onUpdateCalcu
             return;
         }
 
-        // CALCULA A QUANTIDADE REAL QUE SERÁ BAIXADA DO ESTOQUE
-        // Ex: Estoque é KG. Uso é G. Fator é 0.001. 
-        // Se usar 500G -> 500 * 0.001 = 0.5 KG debitado do estoque.
         const baseUnit = selectedProduct.unidade;
         const factor = UNIT_CONVERSIONS[baseUnit]?.factors[selectedUnit] || 1;
         const realQuantity = Number(qty) * factor;
@@ -86,8 +79,8 @@ const ProductRecipe = ({ allProducts, composition, setComposition, onUpdateCalcu
             nome: selectedProduct.nome,
             unidade_estoque: baseUnit,
             unidade_usada: selectedUnit,
-            quantidade_usada: Number(qty),     // O que aparece na receita (ex: 500 g)
-            quantidade_real: realQuantity,     // O que debita do estoque (ex: 0.5 kg)
+            quantidade_usada: Number(qty),
+            quantidade_real: realQuantity,
             custo_unitario: Number(selectedProduct.preco_custo || 0)
         }]);
 
@@ -99,88 +92,94 @@ const ProductRecipe = ({ allProducts, composition, setComposition, onUpdateCalcu
         setComposition(prev => prev.filter(i => i.id_insumo !== id));
     };
 
+    const flatSelectStyle = {
+        height: '50px', border: '1px solid rgba(100, 116, 139, 0.2)', borderRadius: '14px',
+        backgroundColor: 'var(--bg-sidebar, #F4F6FA)', color: 'var(--text-secondary, #64748B)',
+        fontSize: '14px', boxShadow: 'none'
+    };
+
     return (
-        <Card>
-            <Card.Body>
-                <h5 className="fw-bold mb-3 text-primary"><i className="bi bi-list-check me-2"></i>Receita / Composição</h5>
-                <p className="text-muted small mb-4">
-                    Defina os ingredientes e as quantidades. O sistema converterá automaticamente se as unidades forem compatíveis (Ex: KG para G).
-                </p>
+        <div className="mb-4 mt-2">
+            <h6 className="text-uppercase fw-bold mb-3 ls-1" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+                <i className="bi bi-list-check me-2"></i>Receita e Composição
+            </h6>
+            
+            <p className="text-muted small mb-4">
+                Adicione insumos para formar este produto. O sistema calculará o custo e abaterá do estoque automaticamente na venda.
+            </p>
 
-                <div className="d-flex flex-column flex-md-row gap-2 mb-3">
-                    <Form.Select 
-                        value={selectedId} 
-                        onChange={(e) => setSelectedId(e.target.value)}
-                        className="bg-light flex-grow-1"
-                    >
-                        <option value="">Selecione um ingrediente...</option>
-                        {allProducts.map(p => (
-                            <option key={p.id_produto} value={p.id_produto}>
-                                {p.nome} (Em estoque: {Number(p.estoque)} {p.unidade})
-                            </option>
-                        ))}
-                    </Form.Select>
+            {/* ADICIONAR INGREDIENTE */}
+            <div className="d-flex flex-column flex-md-row gap-2 mb-4">
+                <Form.Select 
+                    value={selectedId} 
+                    onChange={(e) => setSelectedId(e.target.value)}
+                    style={{...flatSelectStyle, flexGrow: 1 }}
+                >
+                    <option value="">Selecione um ingrediente...</option>
+                    {allProducts.map(p => (
+                        <option key={p.id_produto} value={p.id_produto}>
+                            {p.nome} (Estoque: {Number(p.estoque)} {p.unidade})
+                        </option>
+                    ))}
+                </Form.Select>
 
-                    <InputGroup style={{ maxWidth: '140px' }}>
-                        <Form.Control type="number" value={qty} onChange={(e) => setQty(e.target.value)} min="0.001" step="0.001" />
-                    </InputGroup>
-
-                    {/* SELETOR DE UNIDADE INTELIGENTE */}
-                    <Form.Select 
-                        style={{ maxWidth: '100px' }}
-                        value={selectedUnit}
-                        onChange={(e) => setSelectedUnit(e.target.value)}
-                        disabled={!selectedId}
-                    >
-                        {availableUnits.map(u => <option key={u} value={u}>{u}</option>)}
-                    </Form.Select>
-
-                    <Button variant="success" onClick={handleAdd} disabled={!selectedId}>
-                        <i className="bi bi-plus-lg"></i>
-                    </Button>
+                <div style={{ width: '100px', flexShrink: 0 }}>
+                    <CustomInput type="number" value={qty} onChange={(e) => setQty(e.target.value)} min="0.001" step="0.001" placeholder="Qtd" />
                 </div>
 
-                <Table responsive hover size="sm" className="mb-0 align-middle">
-                    <thead className="bg-light text-secondary small">
-                        <tr>
-                            <th>Ingrediente</th>
-                            <th className="text-center">Qtd Receita</th>
-                            <th className="text-center">Consumo Real (Estoque)</th>
-                            <th className="text-end">Custo Est.</th>
-                            <th className="text-end">Ação</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {composition.length === 0 ? (
-                            <tr><td colSpan="5" className="text-center text-muted py-3">Nenhum ingrediente.</td></tr>
-                        ) : (
-                            composition.map(item => {
-                                const totalItemCost = item.quantidade_real * item.custo_unitario;
-                                return (
-                                    <tr key={item.id_insumo}>
-                                        <td className="fw-medium">{item.nome}</td>
-                                        <td className="text-center fw-bold text-primary">
-                                            {item.quantidade_usada} {item.unidade_usada}
-                                        </td>
-                                        <td className="text-center text-muted small">
-                                            - {item.quantidade_real} {item.unidade_estoque}
-                                        </td>
-                                        <td className="text-end text-muted">
-                                            R$ {totalItemCost.toFixed(2)}
-                                        </td>
-                                        <td className="text-end">
-                                            <Button variant="link" className="text-danger p-0" onClick={() => handleRemove(item.id_insumo)}>
-                                                <i className="bi bi-trash"></i>
-                                            </Button>
-                                        </td>
-                                    </tr>
-                                );
-                            })
-                        )}
-                    </tbody>
-                </Table>
-            </Card.Body>
-        </Card>
+                <Form.Select 
+                    style={{...flatSelectStyle, width: '100px', flexShrink: 0 }}
+                    value={selectedUnit}
+                    onChange={(e) => setSelectedUnit(e.target.value)}
+                    disabled={!selectedId}
+                >
+                    {availableUnits.map(u => <option key={u} value={u}>{u}</option>)}
+                </Form.Select>
+
+                <GreenSquareButton onClick={handleAdd} disabled={!selectedId} className="flex-shrink-0 w-md-auto">
+                    <i className="bi bi-plus-lg fs-5"></i>
+                </GreenSquareButton>
+            </div>
+
+            {/* 🟢 LISTAGEM FLAT DA RECEITA */}
+            <FlatListContainer loading={false} empty={composition.length === 0} emptyMessage="Nenhum ingrediente adicionado à receita." emptyIcon="bi-receipt">
+                <FlatListHeader>
+                    <div style={{ width: '40%' }}>Ingrediente</div>
+                    <div style={{ width: '20%' }}>Qtd Receita</div>
+                    <div style={{ width: '20%' }}>Uso no Estoque</div>
+                    <div style={{ width: '15%' }}>Custo Estim.</div>
+                    <div style={{ width: '5%' }} className="text-end"></div>
+                </FlatListHeader>
+
+                {composition.map(item => {
+                    const totalItemCost = item.quantidade_real * item.custo_unitario;
+                    return (
+                        <FlatListItem key={item.id_insumo} className="py-2">
+                            <div style={{ width: '40%' }} className="fw-bold mb-1 mb-md-0">
+                                {item.nome}
+                            </div>
+                            <div style={{ width: '20%' }} className="fw-bold mb-1 mb-md-0">
+                                <span className="d-inline d-md-none me-1 text-muted fw-normal">Na Receita:</span>
+                                {item.quantidade_usada} {item.unidade_usada}
+                            </div>
+                            <div style={{ width: '20%' }} className="text-muted small mb-1 mb-md-0">
+                                <span className="d-inline d-md-none me-1 fw-normal">Uso Real:</span>
+                                -{item.quantidade_real} {item.unidade_estoque}
+                            </div>
+                            <div style={{ width: '15%' }} className="text-success fw-medium mb-2 mb-md-0">
+                                <span className="d-inline d-md-none me-1 text-muted fw-normal">Custo:</span>
+                                R$ {totalItemCost.toFixed(2)}
+                            </div>
+                            <div style={{ width: '5%' }} className="text-end">
+                                <RedSquareButton size={36} radius={10} onClick={() => handleRemove(item.id_insumo)}>
+                                    <i className="bi bi-trash"></i>
+                                </RedSquareButton>
+                            </div>
+                        </FlatListItem>
+                    );
+                })}
+            </FlatListContainer>
+        </div>
     );
 };
 

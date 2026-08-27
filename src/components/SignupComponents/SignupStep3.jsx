@@ -1,5 +1,7 @@
 import React from 'react';
 import { Form, Button } from 'react-bootstrap';
+import { CustomInput } from '../ui/SearchInput/SearchInput';
+import { LightButton, CtaButton } from '../ui/buttons/CtaButton'
 
 export const SignupStep3 = ({ formData, setFormData, handlePrevStep, handleNextStep }) => {
   const palette = {
@@ -45,18 +47,14 @@ export const SignupStep3 = ({ formData, setFormData, handlePrevStep, handleNextS
       </div>
 
       <Form.Group className="mb-4">
-        <Form.Label style={{ fontSize: 12, fontWeight: 600, color: palette.sub }}>Nome de Exibição da Loja</Form.Label>
-        <div style={{ background: '#F4F6FA', border: `1px solid ${palette.line}`, borderRadius: 14, overflow: 'hidden' }}>
-          <Form.Control 
+        <Form.Label style={{ fontSize: 12, fontWeight: 600}}>Nome de Exibição da Loja</Form.Label>
+        <div>
+          <CustomInput
             type="text" 
             placeholder="Como os clientes verão"
             value={formData.nomeFantasia || ''} 
             onChange={(e) => setFormData(prev => ({...prev, nomeFantasia: e.target.value}))} 
             required
-            className="border-0 bg-transparent shadow-none"
-            style={{ height: 48, fontSize: 15, color: palette.ink }}
-            onFocus={(e) => { e.currentTarget.parentElement.style.borderColor = formData.primaryColor; e.currentTarget.parentElement.style.background = '#fff'; e.currentTarget.parentElement.style.boxShadow = `0 0 0 4px ${formData.primaryColor}20`; }}
-            onBlur={(e) => { e.currentTarget.parentElement.style.borderColor = palette.line; e.currentTarget.parentElement.style.background = '#F4F6FA'; e.currentTarget.parentElement.style.boxShadow = 'none'; }}
           />
         </div>
       </Form.Group>
@@ -78,16 +76,16 @@ export const SignupStep3 = ({ formData, setFormData, handlePrevStep, handleNextS
       </Form.Group>
 
       <div className="d-flex gap-3 mt-5">
-        <Button variant="light" onClick={handlePrevStep} className="rounded-4 fw-bold px-4 border-0" style={{ backgroundColor: '#F4F6FA', color: palette.sub, height: '50px' }}>
-          <i className="bi bi-arrow-left"></i> Voltar
-        </Button>
-        <Button 
+        <LightButton variant="light" onClick={handlePrevStep} className="rounded-4 fw-bold px-4 border-0" style={{ backgroundColor: '#F4F6FA', color: palette.sub, height: '50px' }}>
+          <i className="bi bi-arrow-left"></i>
+        </LightButton>
+        <CtaButton 
           type="submit" 
-          className="flex-grow-1 rounded-4 fw-bold text-white border-0 shadow-sm"
-          style={{ backgroundColor: formData.primaryColor, height: '50px', boxShadow: `0 10px 24px -8px ${formData.primaryColor}80` }}
+          className="flex-grow-1 rounded-4 fw-bold text-white border-0"
+     
         >
           Continuar <i className="bi bi-arrow-right ms-1"></i>
-        </Button>
+        </CtaButton>
       </div>
     </Form>
   );

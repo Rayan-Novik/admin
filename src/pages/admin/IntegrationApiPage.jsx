@@ -1,8 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Button, Form, Modal, Spinner, Alert, Badge } from 'react-bootstrap';
+import { Form, Modal, Spinner } from 'react-bootstrap';
 import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'react-toastify';
 import api from '../../services/api';
+
+// 🟢 Nossos Componentes Universais Limpos
+import { CtaButton, LightButton, RedButton } from '../../components/ui/buttons/CtaButton';
+import { SquareButton } from '../../components/ui/buttons/SquareButton';
+import { CustomInput } from '../../components/ui/SearchInput/SearchInput';
 
 const IntegrationApiPage = () => {
     const [activeTab, setActiveTab] = useState('apikeys');
@@ -15,7 +20,7 @@ const IntegrationApiPage = () => {
     const [newKeyName, setNewKeyName] = useState('');
     const [isTestKey, setIsTestKey] = useState(false); 
     
-    // 🚀 ATUALIZADO: Todos os grupos de permissões padronizados
+    // Todos os grupos de permissões padronizados
     const [permissoes, setPermissoes] = useState({
         READ_PRODUTOS: true, WRITE_PRODUTOS: false, 
         READ_PEDIDOS: true, WRITE_PEDIDOS: false,
@@ -73,7 +78,6 @@ const IntegrationApiPage = () => {
             setNewKeyName('');
             setIsTestKey(false);
             
-            // 🚀 ATUALIZADO: Reseta o formulário com o novo padrão
             setPermissoes({ 
                 READ_PRODUTOS: true, WRITE_PRODUTOS: false, 
                 READ_PEDIDOS: true, WRITE_PEDIDOS: false,
@@ -143,7 +147,6 @@ const IntegrationApiPage = () => {
 
         if (permArray.length === 0) return <span className="small text-muted fst-italic">Nenhuma Permissão</span>;
 
-        // 🚀 ATUALIZADO: Labels legíveis para as novas chaves
         const labelMap = { 
             'READ_PRODUTOS': 'Ler Produtos', 'WRITE_PRODUTOS': 'Editar Produtos', 
             'READ_PEDIDOS': 'Ler Pedidos', 'WRITE_PEDIDOS': 'Editar Pedidos',
@@ -152,17 +155,21 @@ const IntegrationApiPage = () => {
         };
 
         return permArray.map((p, index) => (
-            <Badge key={index} bg="light" text="dark" className="border me-1 mb-1 fw-normal text-secondary" style={{ fontSize: '0.65rem' }}>{labelMap[p] || p}</Badge>
+            <span key={index} className="badge bg-secondary bg-opacity-10 border border-secondary border-opacity-25 me-1 mb-1 fw-medium text-secondary" style={{ fontSize: '10px' }}>
+                {labelMap[p] || p}
+            </span>
         ));
     };
 
-    if (loading) return <div className="text-center p-5 mt-5"><Spinner animation="border" variant="dark" /></div>;
+    if (loading) return <div className="text-center d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}><Spinner animation="border" style={{ color: '#0A84FF' }} /></div>;
 
     return (
-        <Container fluid className="p-3 p-md-4">
-            <div className="bg-white p-3 p-md-4 rounded-4 shadow-sm border border-light mb-4">
-                <Row className="align-items-center g-3">
-                    <Col xs={12} md={8} className="d-flex align-items-center gap-3">
+        <div style={{ backgroundColor: 'var(--bg-main, #f8fafc)', minHeight: '100vh', paddingBottom: '3rem' }}>
+            <div className="w-100 mx-auto pt-lg-4 pt-3 px-3 px-lg-4" style={{ maxWidth: '1200px' }}>
+                
+                {/* CABEÇALHO */}
+                <div className="mb-4">
+                    <div className="d-flex align-items-center gap-3">
                         <div className="d-none d-sm-flex align-items-center justify-content-center bg-dark bg-opacity-10 rounded-circle flex-shrink-0" style={{ width: '56px', height: '56px' }}>
                             <i className="bi bi-braces-asterisk text-dark fs-4"></i>
                         </div>
@@ -172,214 +179,231 @@ const IntegrationApiPage = () => {
                                 Conecte seu ERP ou Agente de IA. Gere chaves de API e configure um Webhook para receber avisos em tempo real.
                             </p>
                         </div>
-                    </Col>
-                </Row>
-            </div>
+                    </div>
+                </div>
 
-            <div className="d-flex gap-2 mb-4 pb-3 border-bottom overflow-auto" style={{ whiteSpace: 'nowrap' }}>
-                <Button variant={activeTab === 'apikeys' ? 'dark' : 'light'} className={`rounded-pill fw-bold px-4 ${activeTab !== 'apikeys' ? 'text-muted border' : 'shadow-sm'}`} onClick={() => setActiveTab('apikeys')}>
-                    <i className="bi bi-key-fill me-2"></i> Chaves de API
-                </Button>
-                <Button variant={activeTab === 'webhooks' ? 'dark' : 'light'} className={`rounded-pill fw-bold px-4 ${activeTab !== 'webhooks' ? 'text-muted border' : 'shadow-sm'}`} onClick={() => setActiveTab('webhooks')}>
-                    <i className="bi bi-globe2 me-2"></i> Configurar Webhook
-                </Button>
-            </div>
+                {/* TABS NATIVAS */}
+                <div className="d-flex gap-2 mb-4 pb-3 border-bottom overflow-auto" style={{ whiteSpace: 'nowrap', borderColor: 'var(--border-color)' }}>
+                    {activeTab === 'apikeys' ? (
+                        <CtaButton onClick={() => setActiveTab('apikeys')} className="px-4">
+                            <i className="bi bi-key-fill me-2"></i> Chaves de API
+                        </CtaButton>
+                    ) : (
+                        <LightButton onClick={() => setActiveTab('apikeys')} className="px-4">
+                            <i className="bi bi-key-fill me-2"></i> Chaves de API
+                        </LightButton>
+                    )}
+                    
+                    {activeTab === 'webhooks' ? (
+                        <CtaButton onClick={() => setActiveTab('webhooks')} className="px-4">
+                            <i className="bi bi-globe2 me-2"></i> Configurar Webhook
+                        </CtaButton>
+                    ) : (
+                        <LightButton onClick={() => setActiveTab('webhooks')} className="px-4">
+                            <i className="bi bi-globe2 me-2"></i> Configurar Webhook
+                        </LightButton>
+                    )}
+                </div>
 
-            <AnimatePresence mode="wait">
-                {activeTab === 'apikeys' && (
-                    <motion.div key="apikeys" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <div className="d-flex justify-content-between align-items-center mb-4">
-                            <h5 className="fw-bold text-dark mb-0">Integrações Ativas</h5>
-                            <Button variant="dark" onClick={() => setShowModal(true)} size="sm" className="rounded-pill px-3 fw-bold shadow-sm btn-hover-scale">
-                                <i className="bi bi-plus-lg me-1"></i> Nova Chave
-                            </Button>
-                        </div>
-                        
-                        {apiKeys.length === 0 ? (
-                            <div className="text-center p-5 border border-dashed rounded-4 bg-light text-muted mt-2">
-                                <i className="bi bi-key fs-1 mb-3 d-block opacity-25"></i>
-                                <h6 className="fw-bold text-dark">Nenhuma integração ativa</h6>
-                                <p className="mb-0 small">Você ainda não gerou nenhuma chave de API.</p>
+                <AnimatePresence mode="wait">
+                    {/* TAB: CHAVES DE API */}
+                    {activeTab === 'apikeys' && (
+                        <motion.div key="apikeys" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                            <div className="d-flex justify-content-between align-items-center mb-4">
+                                <h5 className="fw-bold text-dark mb-0">Integrações Ativas</h5>
+                                <CtaButton onClick={() => setShowModal(true)} className="px-4">
+                                    <i className="bi bi-plus-lg me-1"></i> Nova Chave
+                                </CtaButton>
                             </div>
-                        ) : (
-                            <Row xs={1} md={2} xl={3} className="g-3 g-md-4">
-                                {apiKeys.map((key) => {
-                                    const isSandboxKey = key.chave.includes('test_');
+                            
+                            {apiKeys.length === 0 ? (
+                                <div className="text-center p-5 rounded-4 text-secondary mt-2" style={{ backgroundColor: 'var(--bg-sidebar, #F4F6FA)', border: '2px dashed rgba(100, 116, 139, 0.2)' }}>
+                                    <i className="bi bi-key fs-1 mb-3 d-block opacity-25"></i>
+                                    <h6 className="fw-bold text-dark">Nenhuma integração ativa</h6>
+                                    <p className="mb-0 small">Você ainda não gerou nenhuma chave de API.</p>
+                                </div>
+                            ) : (
+                                <div className="row g-3 g-md-4">
+                                    {apiKeys.map((key) => {
+                                        const isSandboxKey = key.chave.includes('test_');
 
-                                    return (
-                                    <Col key={key.id}>
-                                        <Card className={`border-0 shadow-sm rounded-4 h-100 ${isSandboxKey ? 'border border-warning border-opacity-50 bg-warning bg-opacity-10' : ''}`}>
-                                            <Card.Body className="p-4 d-flex flex-column">
-                                                <div className="d-flex justify-content-between align-items-start mb-3">
-                                                    <div>
-                                                        <Badge bg={key.ativo ? 'success' : 'secondary'} className="mb-2 bg-opacity-10 text-success border border-success border-opacity-25 rounded-pill px-2 fw-medium me-2">
-                                                            {key.ativo ? 'Ativo' : 'Inativo'}
-                                                        </Badge>
-                                                        {isSandboxKey && (
-                                                            <Badge bg="warning" text="dark" className="mb-2 rounded-pill px-2 fw-bold shadow-sm">
-                                                                <i className="bi bi-cone-striped me-1"></i> SANDBOX
-                                                            </Badge>
-                                                        )}
-                                                        <h6 className="fw-bold text-dark mb-0">{key.nome}</h6>
+                                        return (
+                                        <div key={key.id} className="col-12 col-md-6 col-xl-4">
+                                            <div className="d-flex flex-column h-100 rounded-4 shadow-sm border" style={{ backgroundColor: isSandboxKey ? 'rgba(245, 158, 11, 0.05)' : 'var(--bg-sidebar, #FFFFFF)', borderColor: isSandboxKey ? 'rgba(245, 158, 11, 0.3)' : 'var(--border-color)' }}>
+                                                <div className="p-4 flex-grow-1 d-flex flex-column">
+                                                    <div className="d-flex justify-content-between align-items-start mb-3">
+                                                        <div>
+                                                            <span className={`badge rounded-pill px-2 fw-medium me-2 mb-2 bg-opacity-10 border border-opacity-25 ${key.ativo ? 'bg-success text-success border-success' : 'bg-secondary text-secondary border-secondary'}`}>
+                                                                {key.ativo ? 'Ativo' : 'Inativo'}
+                                                            </span>
+                                                            {isSandboxKey && (
+                                                                <span className="badge bg-warning text-dark rounded-pill px-2 fw-bold shadow-sm mb-2">
+                                                                    <i className="bi bi-cone-striped me-1"></i> SANDBOX
+                                                                </span>
+                                                            )}
+                                                            <h6 className="fw-bold text-dark mb-0">{key.nome}</h6>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="d-flex align-items-center justify-content-between p-2 mb-3 rounded-3" style={{ backgroundColor: 'var(--bg-main, #F8FAFC)', border: '1px solid var(--border-color)' }}>
+                                                        <span className="font-monospace text-muted small ms-2 user-select-all" style={{ fontSize: '12px' }}>{key.chave.substring(0, 16)}••••••••</span>
+                                                        <SquareButton onClick={() => handleCopy(key.chave)}>
+                                                            <i className="bi bi-clipboard"></i>
+                                                        </SquareButton>
+                                                    </div>
+
+                                                    <div className="mb-4">
+                                                        <span className="d-block text-muted mb-1 fw-bold text-uppercase" style={{ fontSize: '10px', letterSpacing: '0.5px' }}>PERMISSÕES:</span>
+                                                        <div className="d-flex flex-wrap gap-1">{renderPermissoesBadges(key.permissoes)}</div>
+                                                    </div>
+
+                                                    <div className="mt-auto pt-3 border-top" style={{ borderColor: 'var(--border-color)' }}>
+                                                        <div className="d-flex justify-content-between align-items-center">
+                                                            <span className="text-muted" style={{ fontSize: '11px' }}>Criada em:</span>
+                                                            <span className="fw-bold text-dark" style={{ fontSize: '11px' }}>{formatDate(key.criado_em)}</span>
+                                                        </div>
                                                     </div>
                                                 </div>
-
-                                                <div className="bg-light border rounded-3 p-2 mb-3 d-flex align-items-center justify-content-between">
-                                                    <span className="font-monospace text-muted small ms-2 user-select-all">{key.chave.substring(0, 16)}••••••••</span>
-                                                    <Button variant="white" size="sm" className="border shadow-sm rounded-2 text-primary p-1 px-2" onClick={() => handleCopy(key.chave)}><i className="bi bi-clipboard"></i></Button>
+                                                <div className="p-3 pt-0 d-flex gap-2">
+                                                    <RedButton onClick={() => handleRevokeKey(key.id, key.nome)} className="w-100 fw-bold">
+                                                        Revogar Acesso
+                                                    </RedButton>
                                                 </div>
+                                            </div>
+                                        </div>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                        </motion.div>
+                    )}
 
-                                                <div className="mb-4">
-                                                    <span className="d-block small text-muted mb-1" style={{ fontSize: '0.7rem', fontWeight: 'bold' }}>PERMISSÕES:</span>
-                                                    <div className="d-flex flex-wrap gap-1">{renderPermissoesBadges(key.permissoes)}</div>
-                                                </div>
-
-                                                <div className="mt-auto pt-3 border-top border-opacity-25">
-                                                    <div className="d-flex justify-content-between mb-1">
-                                                        <span className="small text-muted" style={{ fontSize: '0.7rem' }}>Criada em:</span>
-                                                        <span className="small fw-medium text-dark" style={{ fontSize: '0.7rem' }}>{formatDate(key.criado_em)}</span>
-                                                    </div>
-                                                </div>
-                                            </Card.Body>
-                                            <Card.Footer className="bg-transparent border-top-0 p-3 pt-0 d-flex gap-2">
-                                                <Button variant="outline-danger" size="sm" className="w-100 fw-bold rounded-pill" onClick={() => handleRevokeKey(key.id, key.nome)}>Revogar Acesso</Button>
-                                            </Card.Footer>
-                                        </Card>
-                                    </Col>
-                                    );
-                                })}
-                            </Row>
-                        )}
-                    </motion.div>
-                )}
-
-                {activeTab === 'webhooks' && (
-                    <motion.div key="webhooks" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
-                        <Card className="border-0 shadow-sm rounded-4 mb-5">
-                            <Card.Body className="p-4 p-md-5">
-                                <Row>
-                                    <Col lg={5} className="mb-4 mb-lg-0 pe-lg-5">
-                                        <h6 className="fw-bold text-dark">Webhook: Pedido Pago</h6>
-                                        <p className="text-muted small mb-4">
+                    {/* TAB: WEBHOOKS */}
+                    {activeTab === 'webhooks' && (
+                        <motion.div key="webhooks" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -10 }} transition={{ duration: 0.2 }}>
+                            <div className="bg-white border-0 shadow-sm rounded-4 mb-5 p-4 p-md-5" style={{ backgroundColor: 'var(--bg-sidebar, #FFFFFF)' }}>
+                                <div className="row">
+                                    <div className="col-lg-5 mb-4 mb-lg-0 pe-lg-5">
+                                        <h6 className="fw-bold text-dark mb-3">Webhook: Pedido Pago</h6>
+                                        <p className="text-secondary small mb-4">
                                             Quer que o seu ERP saiba instantaneamente quando um pedido for aprovado? Cadastre a URL do seu sistema aqui.
                                         </p>
-                                        <Alert variant="info" className="bg-opacity-10 border-0 rounded-3 small">
+                                        <div className="bg-info bg-opacity-10 text-info p-3 rounded-3 small fw-medium">
                                             <i className="bi bi-info-circle-fill me-2"></i>
                                             Nós enviaremos um POST em formato JSON contendo todos os dados do cliente e produtos comprados sempre que houver um pagamento aprovado.
-                                        </Alert>
-                                    </Col>
+                                        </div>
+                                    </div>
                                     
-                                    <Col lg={7}>
-                                        <Form onSubmit={handleSaveWebhook}>
-                                            <Form.Group className="mb-4">
-                                                <Form.Label className="small fw-bold text-muted">URL DE DESTINO DO SEU ERP (ENDPOINT)</Form.Label>
-                                                <Form.Control 
+                                    <div className="col-lg-7">
+                                        <form onSubmit={handleSaveWebhook}>
+                                            <div className="mb-4">
+                                                <label className="fw-bold text-secondary mb-2" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>URL DE DESTINO DO SEU ERP (ENDPOINT)</label>
+                                                <CustomInput 
                                                     type="url" 
                                                     placeholder="https://seu-erp.com.br/api/callback/ararinha" 
                                                     value={webhookUrl}
                                                     onChange={(e) => setWebhookUrl(e.target.value)}
-                                                    className="bg-light py-2 border-0 shadow-sm"
                                                     required 
                                                 />
-                                            </Form.Group>
+                                            </div>
 
                                             <div className="d-flex flex-column flex-sm-row gap-2">
-                                                <Button variant="primary" type="submit" className="fw-bold px-4 py-2 rounded-3 shadow-sm d-flex justify-content-center align-items-center" disabled={savingWebhook}>
-                                                    {savingWebhook ? <Spinner size="sm" animation="border" className="me-2" /> : <i className="bi bi-save me-2"></i>}
+                                                <CtaButton type="submit" disabled={savingWebhook} className="px-4" style={{ height: '46px', borderRadius: '12px' }}>
+                                                    {savingWebhook ? <Spinner size="sm" className="me-2" /> : <i className="bi bi-save me-2"></i>}
                                                     Salvar URL do Webhook
-                                                </Button>
+                                                </CtaButton>
                                                 
-                                                <Button variant="outline-secondary" onClick={handleTestWebhook} className="fw-bold px-4 py-2 rounded-3 d-flex justify-content-center align-items-center bg-white border-2" disabled={testingWebhook}>
-                                                    {testingWebhook ? <Spinner size="sm" animation="border" className="me-2" /> : <i className="bi bi-play-circle me-2"></i>}
+                                                <LightButton onClick={handleTestWebhook} disabled={testingWebhook} className="px-4 border-2" style={{ height: '46px', borderRadius: '12px' }}>
+                                                    {testingWebhook ? <Spinner size="sm" className="me-2" /> : <i className="bi bi-play-circle me-2"></i>}
                                                     Disparar Teste
-                                                </Button>
+                                                </LightButton>
                                             </div>
-                                        </Form>
-                                    </Col>
-                                </Row>
-                            </Card.Body>
-                        </Card>
-                    </motion.div>
-                )}
-            </AnimatePresence>
-
-            <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static" size="lg">
-                <Form onSubmit={handleCreateKey}>
-                    <Modal.Header closeButton className="border-0 pb-0">
-                        <Modal.Title className="fw-bold h5">Nova Integração de API</Modal.Title>
-                    </Modal.Header>
-                    <Modal.Body className="p-4">
-                        <p className="text-muted small mb-4">Dê um nome para a integração e defina quais dados esse sistema poderá acessar.</p>
-                        
-                        <Form.Group className="mb-4">
-                            <Form.Label className="small fw-bold text-muted">NOME DA INTEGRAÇÃO</Form.Label>
-                            <Form.Control type="text" placeholder="Ex: Agente de IA n8n" value={newKeyName} onChange={(e) => setNewKeyName(e.target.value)} className="bg-light border-0 py-2" autoFocus required />
-                        </Form.Group>
-
-                        <div className={`p-3 rounded-4 mb-4 border ${isTestKey ? 'bg-warning bg-opacity-10 border-warning' : 'bg-light border-light'}`} style={{ transition: '0.3s' }}>
-                            <Form.Check 
-                                type="switch" 
-                                id="sandbox-switch" 
-                                label={
-                                    <div>
-                                        <strong className="d-block text-dark">Gerar como Chave de Teste (Sandbox)</strong>
-                                        <span className="small text-muted" style={{ fontSize: '0.8rem' }}>Ações feitas com essa chave não vão alterar o seu estoque real e serão marcadas como testes.</span>
+                                        </form>
                                     </div>
-                                } 
-                                checked={isTestKey} 
-                                onChange={(e) => setIsTestKey(e.target.checked)} 
-                            />
+                                </div>
+                            </div>
+                        </motion.div>
+                    )}
+                </AnimatePresence>
+
+                {/* MODAL (Mantido Form.Check para switches pois é complexo criar switches nativos sem CSS extra) */}
+                <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static" size="lg" contentClassName="border-0 rounded-4 shadow-lg overflow-hidden">
+                    <form onSubmit={handleCreateKey}>
+                        <div className="p-4 pb-3" style={{ backgroundColor: '#0f172a' }}>
+                            <h5 className="fw-bold text-white mb-1">Nova Integração de API</h5>
+                            <p className="mb-0 text-white opacity-75 small">Dê um nome para a integração e defina quais dados esse sistema poderá acessar.</p>
                         </div>
 
-                        <Form.Label className="small fw-bold text-muted">PERMISSÕES (SCOPES)</Form.Label>
-                        <div className="bg-light p-3 rounded-4 border-0">
-                            {/* 🚀 ATUALIZADO: Grid de 4 Grupos (2x2) com os IDs e chaves corretos */}
-                            <Row className="g-3">
-                                <Col md={6}>
-                                    <h6 className="fw-bold text-dark small mb-3 border-b pb-2"><i className="bi bi-box-seam me-2"></i>Catálogo</h6>
-                                    <Form.Check type="switch" id="read_produtos" label={<span className="small">Visualizar produtos e estoque</span>} checked={permissoes.READ_PRODUTOS} onChange={(e) => setPermissoes({...permissoes, READ_PRODUTOS: e.target.checked})} className="mb-2" />
-                                    <Form.Check type="switch" id="write_produtos" label={<span className="small">Criar/Atualizar produtos</span>} checked={permissoes.WRITE_PRODUTOS} onChange={(e) => setPermissoes({...permissoes, WRITE_PRODUTOS: e.target.checked})} />
-                                </Col>
-                                
-                                <Col md={6}>
-                                    <h6 className="fw-bold text-dark small mb-3 border-b pb-2"><i className="bi bi-cart3 me-2"></i>Pedidos</h6>
-                                    <Form.Check type="switch" id="read_pedidos" label={<span className="small">Visualizar lista de vendas</span>} checked={permissoes.READ_PEDIDOS} onChange={(e) => setPermissoes({...permissoes, READ_PEDIDOS: e.target.checked})} className="mb-2" />
-                                    <Form.Check type="switch" id="write_pedidos" label={<span className="small">Gerar novos pedidos</span>} checked={permissoes.WRITE_PEDIDOS} onChange={(e) => setPermissoes({...permissoes, WRITE_PEDIDOS: e.target.checked})} />
-                                </Col>
-                                
-                                <Col md={6}>
-                                    <h6 className="fw-bold text-dark small mb-3 border-b pb-2"><i className="bi bi-people me-2"></i>Clientes</h6>
-                                    <Form.Check type="switch" id="read_clientes" label={<span className="small">Buscar dados de clientes</span>} checked={permissoes.READ_CLIENTES} onChange={(e) => setPermissoes({...permissoes, READ_CLIENTES: e.target.checked})} className="mb-2" />
-                                    <Form.Check type="switch" id="write_clientes" label={<span className="small">Cadastrar novos clientes</span>} checked={permissoes.WRITE_CLIENTES} onChange={(e) => setPermissoes({...permissoes, WRITE_CLIENTES: e.target.checked})} />
-                                </Col>
+                        <Modal.Body className="p-4" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
+                            
+                            <div className="mb-4">
+                                <label className="fw-bold text-secondary mb-2" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>NOME DA INTEGRAÇÃO</label>
+                                <CustomInput 
+                                    placeholder="Ex: Agente de IA n8n" 
+                                    value={newKeyName} 
+                                    onChange={(e) => setNewKeyName(e.target.value)} 
+                                    required 
+                                />
+                            </div>
 
-                                <Col md={6}>
-                                    <h6 className="fw-bold text-dark small mb-3 border-b pb-2"><i className="bi bi-wallet2 me-2"></i>Financeiro</h6>
-                                    <Form.Check type="switch" id="read_financeiro" label={<span className="small">Visualizar transações</span>} checked={permissoes.READ_FINANCEIRO} onChange={(e) => setPermissoes({...permissoes, READ_FINANCEIRO: e.target.checked})} className="mb-2" />
-                                    <Form.Check type="switch" id="write_financeiro" label={<span className="small">Gerar movimentações</span>} checked={permissoes.WRITE_FINANCEIRO} onChange={(e) => setPermissoes({...permissoes, WRITE_FINANCEIRO: e.target.checked})} />
-                                </Col>
-                            </Row>
-                        </div>
-                    </Modal.Body>
-                    <Modal.Footer className="border-top-0 pt-0 px-4 pb-4">
-                        <Button variant="light" onClick={() => setShowModal(false)} className="fw-medium">Cancelar</Button>
-                        <Button variant={isTestKey ? "warning" : "dark"} type="submit" className="px-4 fw-bold shadow-sm rounded-pill" disabled={creating}>
-                            {creating ? <Spinner size="sm" animation="border" /> : (isTestKey ? 'Gerar Chave de Teste' : 'Gerar Chave')}
-                        </Button>
-                    </Modal.Footer>
-                </Form>
-            </Modal>
+                            <div className="p-3 rounded-4 mb-4" style={{ backgroundColor: isTestKey ? 'rgba(245, 158, 11, 0.1)' : 'var(--bg-main, #F8FAFC)', border: `1px solid ${isTestKey ? 'rgba(245, 158, 11, 0.3)' : 'var(--border-color)'}`, transition: '0.3s' }}>
+                                <Form.Check 
+                                    type="switch" 
+                                    id="sandbox-switch" 
+                                    label={
+                                        <div>
+                                            <strong className="d-block text-dark">Gerar como Chave de Teste (Sandbox)</strong>
+                                            <span className="small text-secondary" style={{ fontSize: '12px' }}>Ações feitas com essa chave não vão alterar o seu estoque real e serão marcadas como testes.</span>
+                                        </div>
+                                    } 
+                                    checked={isTestKey} 
+                                    onChange={(e) => setIsTestKey(e.target.checked)} 
+                                />
+                            </div>
 
-            <style>{`
-                .border-dashed { border-style: dashed !important; border-width: 2px !important; }
-                .btn-hover-scale { transition: transform 0.2s; }
-                .btn-hover-scale:hover:not(:disabled) { transform: scale(1.03); }
-                .w-md-auto { width: auto !important; }
-                @media (min-width: 768px) {
-                    .w-md-auto { width: auto !important; }
-                }
-            `}</style>
-        </Container>
+                            <label className="fw-bold text-secondary mb-3" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>PERMISSÕES (SCOPES)</label>
+                            <div className="p-4 rounded-4" style={{ backgroundColor: 'var(--bg-main, #F8FAFC)', border: '1px solid var(--border-color)' }}>
+                                <div className="row g-4">
+                                    <div className="col-md-6">
+                                        <h6 className="fw-bold text-dark small mb-3 border-bottom pb-2" style={{ borderColor: 'var(--border-color)' }}><i className="bi bi-box-seam me-2"></i>Catálogo</h6>
+                                        <Form.Check type="switch" id="read_produtos" label={<span className="small text-dark">Visualizar produtos e estoque</span>} checked={permissoes.READ_PRODUTOS} onChange={(e) => setPermissoes({...permissoes, READ_PRODUTOS: e.target.checked})} className="mb-2" />
+                                        <Form.Check type="switch" id="write_produtos" label={<span className="small text-dark">Criar/Atualizar produtos</span>} checked={permissoes.WRITE_PRODUTOS} onChange={(e) => setPermissoes({...permissoes, WRITE_PRODUTOS: e.target.checked})} />
+                                    </div>
+                                    
+                                    <div className="col-md-6">
+                                        <h6 className="fw-bold text-dark small mb-3 border-bottom pb-2" style={{ borderColor: 'var(--border-color)' }}><i className="bi bi-cart3 me-2"></i>Pedidos</h6>
+                                        <Form.Check type="switch" id="read_pedidos" label={<span className="small text-dark">Visualizar lista de vendas</span>} checked={permissoes.READ_PEDIDOS} onChange={(e) => setPermissoes({...permissoes, READ_PEDIDOS: e.target.checked})} className="mb-2" />
+                                        <Form.Check type="switch" id="write_pedidos" label={<span className="small text-dark">Gerar novos pedidos</span>} checked={permissoes.WRITE_PEDIDOS} onChange={(e) => setPermissoes({...permissoes, WRITE_PEDIDOS: e.target.checked})} />
+                                    </div>
+                                    
+                                    <div className="col-md-6">
+                                        <h6 className="fw-bold text-dark small mb-3 border-bottom pb-2" style={{ borderColor: 'var(--border-color)' }}><i className="bi bi-people me-2"></i>Clientes</h6>
+                                        <Form.Check type="switch" id="read_clientes" label={<span className="small text-dark">Buscar dados de clientes</span>} checked={permissoes.READ_CLIENTES} onChange={(e) => setPermissoes({...permissoes, READ_CLIENTES: e.target.checked})} className="mb-2" />
+                                        <Form.Check type="switch" id="write_clientes" label={<span className="small text-dark">Cadastrar novos clientes</span>} checked={permissoes.WRITE_CLIENTES} onChange={(e) => setPermissoes({...permissoes, WRITE_CLIENTES: e.target.checked})} />
+                                    </div>
+
+                                    <div className="col-md-6">
+                                        <h6 className="fw-bold text-dark small mb-3 border-bottom pb-2" style={{ borderColor: 'var(--border-color)' }}><i className="bi bi-wallet2 me-2"></i>Financeiro</h6>
+                                        <Form.Check type="switch" id="read_financeiro" label={<span className="small text-dark">Visualizar transações</span>} checked={permissoes.READ_FINANCEIRO} onChange={(e) => setPermissoes({...permissoes, READ_FINANCEIRO: e.target.checked})} className="mb-2" />
+                                        <Form.Check type="switch" id="write_financeiro" label={<span className="small text-dark">Gerar movimentações</span>} checked={permissoes.WRITE_FINANCEIRO} onChange={(e) => setPermissoes({...permissoes, WRITE_FINANCEIRO: e.target.checked})} />
+                                    </div>
+                                </div>
+                            </div>
+                        </Modal.Body>
+
+                        <Modal.Footer className="border-0 pt-0 px-4 pb-4" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
+                            <LightButton onClick={() => setShowModal(false)} className="px-4" style={{ height: '42px', borderRadius: '50px' }}>
+                                Cancelar
+                            </LightButton>
+                            <CtaButton type="submit" color={isTestKey ? "#ffc107" : undefined} className={`px-4 ${isTestKey ? 'text-dark' : ''}`} style={{ height: '42px', borderRadius: '50px' }} disabled={creating}>
+                                {creating ? <Spinner size="sm" /> : (isTestKey ? 'Gerar Chave de Teste' : 'Gerar Chave')}
+                            </CtaButton>
+                        </Modal.Footer>
+                    </form>
+                </Modal>
+
+            </div>
+        </div>
     );
 };
 

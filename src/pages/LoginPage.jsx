@@ -1,8 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Container, Row, Col, Card, Alert, Spinner, InputGroup } from 'react-bootstrap';
+import { Form, Container, Row, Col, Card, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../services/api';
 import '../styles/login.css';
+import { CtaButton } from '../components/ui/buttons/CtaButton';
+// Importando o novo componente universal (lembre-se de usar o nome que você exportou)
+import { CustomInput } from '../components/ui/SearchInput/SearchInput'; 
 
 /* =========================================================
    AraraCloud · LoginPage (Global)
@@ -12,9 +15,11 @@ import '../styles/login.css';
 const LoginPage = ({ onLogin }) => {
   const [loginInput, setLoginInput] = useState('');
   const [senha, setSenha] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Nota: Removemos o state 'showPassword' daqui, 
+  // pois o CustomInput agora gerencia o olhinho da senha sozinho!
 
   const navigate = useNavigate();
   const APP_VERSION = '20260619.1';
@@ -99,7 +104,7 @@ const LoginPage = ({ onLogin }) => {
     }
   };
 
-  /* ---------- ESTILOS INLINE (independem do login.css) ---------- */
+  /* ---------- ESTILOS INLINE ---------- */
   const palette = {
     brand: '#0A84FF',
     brandDeep: '#0066CC',
@@ -128,13 +133,6 @@ const LoginPage = ({ onLogin }) => {
       position: 'absolute', bottom: -160, right: -120, width: 480, height: 480,
       borderRadius: '50%', background: 'rgba(10,132,255,0.22)', filter: 'blur(90px)', zIndex: 0,
     },
-    logoMark: {
-      width: 48, height: 48, borderRadius: 14,
-      background: `linear-gradient(135deg, ${palette.brand}, ${palette.brandSoft})`,
-      color: '#fff', display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
-      fontWeight: 700, fontSize: 20, letterSpacing: '-0.02em',
-      boxShadow: '0 10px 24px -8px rgba(10,132,255,0.55)',
-    },
     title: {
       fontSize: 26, fontWeight: 600, letterSpacing: '-0.02em', color: palette.ink,
     },
@@ -151,38 +149,11 @@ const LoginPage = ({ onLogin }) => {
       fontSize: 12, fontWeight: 500, color: palette.sub,
       textTransform: 'none', marginBottom: 6, letterSpacing: 0,
     },
-    inputWrap: {
-      background: '#F4F6FA',
-      border: `1px solid ${palette.line}`,
-      borderRadius: 14,
-      transition: 'all .2s ease',
-      overflow: 'hidden',
-    },
-    inputText: {
-      background: 'transparent', border: 0, height: 48, fontSize: 15, color: palette.ink,
-    },
-    iconBox: { color: palette.brand, background: 'transparent', border: 0 },
-    eye: { color: palette.sub, background: 'transparent', border: 0 },
-    cta: {
-      height: 50,
-      borderRadius: 14,
-      border: 0,
-      background: `linear-gradient(180deg, ${palette.brand}, ${palette.brandDeep})`,
-      color: '#fff',
-      fontWeight: 600,
-      fontSize: 15,
-      letterSpacing: '-0.01em',
-      boxShadow: '0 10px 24px -8px rgba(10,132,255,0.6)',
-      transition: 'transform .15s ease, box-shadow .2s ease, filter .2s ease',
-    },
     footerBar: {
       background: 'rgba(247,249,252,0.7)',
       borderTop: `1px solid ${palette.line}`,
     },
     link: { color: palette.brand, textDecoration: 'none', fontWeight: 600 },
-    brandText: {
-      fontSize: 22, fontWeight: 600, letterSpacing: '-0.02em', color: palette.ink,
-    },
   };
 
   return (
@@ -195,19 +166,16 @@ const LoginPage = ({ onLogin }) => {
           <Col xs={12} sm={10} md={7} lg={5} xl={4}>
             {/* Brand */}
             <div className="text-center mb-4">
-              <div className="d-inline-flex align-items-center gap-2 mb-3">
+              <div className="d-inline-flex justify-content-center mb-3 w-100">
                 <img
-                  src="/logologin.png"
+                  src="/logologin2.png"
                   alt="ArarinhaCloud"
                   style={{
-                    width: 48,
-                    height: 48,
+                    width: 220,
+                    height: 'auto',
                     objectFit: 'contain',
                   }}
                 />
-                <span style={styles.brandText}>
-                  ararinha<span style={{ color: palette.brand }}>cloud</span>
-                </span>
               </div>
               <h3 style={styles.title} className="mb-1">Acesse seu painel</h3>
               <p style={styles.subtitle} className="mb-0">
@@ -229,100 +197,59 @@ const LoginPage = ({ onLogin }) => {
                 )}
 
                 <Form onSubmit={submitHandler}>
+                  
+                  {/* --- CAMPO DE E-MAIL (NOVO) --- */}
                   <Form.Group className="mb-3">
                     <Form.Label style={styles.label}>E-mail</Form.Label>
-                    <InputGroup
-                      style={styles.inputWrap}
-                      onFocus={(e) => {
-                        e.currentTarget.style.borderColor = palette.brand;
-                        e.currentTarget.style.background = '#fff';
-                        e.currentTarget.style.boxShadow = '0 0 0 4px rgba(10,132,255,0.12)';
-                      }}
-                      onBlur={(e) => {
-                        e.currentTarget.style.borderColor = palette.line;
-                        e.currentTarget.style.background = '#F4F6FA';
-                        e.currentTarget.style.boxShadow = 'none';
-                      }}
-                    >
-                      <InputGroup.Text style={styles.iconBox} className="ps-3">
-                        <i className="bi bi-envelope fs-5"></i>
-                      </InputGroup.Text>
-                      <Form.Control
-                        type="email"
-                        placeholder="voce@empresa.com"
-                        value={loginInput}
-                        onChange={(e) => setLoginInput(e.target.value)}
-                        required
-                        className="shadow-none"
-                        style={styles.inputText}
-                        autoComplete="username"
-                      />
-                    </InputGroup>
+                    <CustomInput
+                      icon="bi-envelope"
+                      type="email"
+                      placeholder="voce@empresa.com"
+                      value={loginInput}
+                      onChange={(e) => setLoginInput(e.target.value)}
+                      required
+                      autoComplete="username"
+                    />
                   </Form.Group>
 
+                  {/* --- CAMPO DE SENHA (NOVO) --- */}
                   <Form.Group className="mb-2">
                     <Form.Label style={styles.label}>Senha</Form.Label>
-                    <InputGroup style={styles.inputWrap}>
-                      <InputGroup.Text style={styles.iconBox} className="ps-3">
-                        <i className="bi bi-lock fs-5"></i>
-                      </InputGroup.Text>
-                      <Form.Control
-                        type={showPassword ? 'text' : 'password'}
-                        placeholder="••••••••"
-                        value={senha}
-                        onChange={(e) => setSenha(e.target.value)}
-                        required
-                        className="shadow-none"
-                        style={styles.inputText}
-                        autoComplete="current-password"
-                      />
-                      <Button
-                        variant="link"
-                        className="text-decoration-none pe-3"
-                        style={styles.eye}
-                        onClick={() => setShowPassword(!showPassword)}
-                        type="button"
-                      >
-                        <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'} fs-5`}></i>
-                      </Button>
-                    </InputGroup>
+                    <CustomInput
+                      icon="bi-lock"
+                      type="password" // A mágica acontece aqui!
+                      placeholder="••••••••"
+                      value={senha}
+                      onChange={(e) => setSenha(e.target.value)}
+                      required
+                      autoComplete="current-password"
+                    />
                   </Form.Group>
 
-                  <div className="d-flex justify-content-end mb-4">
+                  <div className="d-flex justify-content-end mb-4 mt-2">
                     <Link to="/esqueci-senha" style={{ ...styles.link, fontSize: 13 }}>
                       Esqueceu a senha?
                     </Link>
                   </div>
 
-                  <div className="d-grid mb-4">
-                    <Button
-                      type="submit"
-                      disabled={loading}
-                      style={styles.cta}
-                      onMouseEnter={(e) => {
-                        if (!loading) {
-                          e.currentTarget.style.filter = 'brightness(1.06)';
-                          e.currentTarget.style.transform = 'translateY(-1px)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.filter = 'none';
-                        e.currentTarget.style.transform = 'translateY(0)';
-                      }}
-                    >
-                      {loading ? (
-                        <>
-                          <Spinner as="span" animation="border" size="sm" className="me-2" />
-                          Autenticando...
-                        </>
-                      ) : (
-                        <>
-                          Entrar na minha conta
-                          <i className="bi bi-arrow-right ms-2 align-middle"></i>
-                        </>
-                      )}
-                    </Button>
-                  </div>
+                  <CtaButton
+                    type="submit"
+                    disabled={loading}
+                    fullWidth={true}
+                    className="mb-4"
+                  >
+                    {loading ? (
+                      <>
+                        <Spinner as="span" animation="border" size="sm" className="me-2" />
+                        Autenticando...
+                      </>
+                    ) : (
+                      <>
+                        Entrar na minha conta
+                        <i className="bi bi-arrow-right ms-2 align-middle"></i>
+                      </>
+                    )}
+                  </CtaButton>
 
                   <div className="text-center">
                     <span style={{ color: palette.sub, fontSize: 14 }}>

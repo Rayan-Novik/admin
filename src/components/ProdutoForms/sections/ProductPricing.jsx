@@ -1,7 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { Row, Col, Badge, Form, InputGroup, Button, Table } from 'react-bootstrap';
+import { Row, Col, Badge, Form } from 'react-bootstrap';
 import { ScanLine, Plus, Trash2 } from 'lucide-react';
-import UiField from '../../ui/UiField';
+
+// Nossos componentes universais maravilhosos
+import { CustomInput } from '../../ui/SearchInput/SearchInput';
+import { LightButton } from '../../ui/buttons/CtaButton';
+import { GreenSquareButton, RedSquareButton } from '../../ui/buttons/SquareButton';
+import { FlatListContainer, FlatListHeader, FlatListItem } from '../../ui/listagem/FlatList';
+
 import BarcodeScannerModal from '../../modules/pdvManager/BarcodeScannerModal';
 
 const ProductPricing = ({ formData, handleChange, setFormData, estoqueOriginal, isCrafting }) => {
@@ -130,137 +136,175 @@ const ProductPricing = ({ formData, handleChange, setFormData, estoqueOriginal, 
     const estoqueOrig = parseFloat(estoqueOriginal) || 0;
     const estoqueAlterado = estoqueAtual !== estoqueOrig;
 
-    // 🟢 VERIFICADOR DE TIPO DE PRODUTO
     const isServico = formData.tipo_produto === 'SERVICO';
+
+    // Estilo comum para Selects nativos acompanharem o visual do CustomInput
+    const flatSelectStyle = {
+        height: '50px',
+        border: '1px solid rgba(100, 116, 139, 0.2)',
+        borderRadius: '14px',
+        backgroundColor: 'var(--bg-sidebar, #F4F6FA)',
+        color: 'var(--text-secondary, #64748B)',
+        fontSize: '14px',
+        boxShadow: 'none',
+        cursor: 'pointer',
+        transition: 'all 0.2s ease'
+    };
 
     return (
         <div>
-            {/* 🟢 TIPO DE PRODUTO MOVIDO PARA CÁ (TOPO) */}
+            {/* 🟢 TIPO DE PRODUTO */}
             <div>
                 <h6 className="text-uppercase fw-bold mb-3 ls-1" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                     <i className="bi bi-sliders me-2"></i>Natureza do Produto
                 </h6>
-                <Row className="g-3">
+                <Row className="g-3 mb-4">
                     <Col md={isServico ? 6 : 12}>
-                        <UiField
-                            label="O que você está cadastrando?"
-                            type="select"
-                            name="tipo_produto"
-                            value={formData.tipo_produto}
-                            onChange={handleChange}
-                            disabled={isCrafting}
-                            options={[
-                                { value: 'FINAL', label: 'Produto Físico (Venda Comum)' },
-                                { value: 'SERVICO', label: 'Serviço (Agendamento / Mão de Obra)' },
-                                { value: 'INSUMO', label: 'Matéria Prima (Só p/ Gastos Internos)' },
-                                { value: 'MISTO', label: 'Misto (Produzido na Loja)' },
-                                { value: 'CONSUMO_INTERNO', label: 'Despesa / Consumo Interno' },
-                            ]}
-                        />
+                        <Form.Group>
+                            <Form.Label className="fw-semibold small text-dark mb-1">O que você está cadastrando?</Form.Label>
+                            <Form.Select
+                                name="tipo_produto"
+                                value={formData.tipo_produto}
+                                onChange={handleChange}
+                                disabled={isCrafting}
+                                style={flatSelectStyle}
+                            >
+                                <option value="FINAL">Produto Físico (Venda Comum)</option>
+                                <option value="SERVICO">Serviço (Agendamento / Mão de Obra)</option>
+                                <option value="INSUMO">Matéria Prima (Só p/ Gastos Internos)</option>
+                                <option value="MISTO">Misto (Produzido na Loja)</option>
+                                <option value="CONSUMO_INTERNO">Despesa / Consumo Interno</option>
+                            </Form.Select>
+                        </Form.Group>
                     </Col>
 
                     {isServico && (
                         <Col md={6}>
-                            <UiField
-                                label="Duração Estimada (Minutos)"
-                                type="number"
-                                name="duracao_minutos"
-                                value={formData.duracao_minutos || ''}
-                                onChange={handleChange}
-                                placeholder="Ex: 45"
-                                hint="Tempo que o profissional leva para realizar."
-                            />
+                            <Form.Group>
+                                <Form.Label className="fw-semibold small text-dark mb-1">Duração Estimada (Minutos)</Form.Label>
+                                <CustomInput
+                                    icon="bi-clock-history"
+                                    type="number"
+                                    name="duracao_minutos"
+                                    value={formData.duracao_minutos || ''}
+                                    onChange={handleChange}
+                                    placeholder="Ex: 45"
+                                />
+                                <Form.Text className="text-muted d-block mt-1" style={{ fontSize: '11px' }}>
+                                    Tempo médio de realização.
+                                </Form.Text>
+                            </Form.Group>
                         </Col>
                     )}
                 </Row>
             </div>
 
-            <h6 className="text-uppercase fw-bold mb-4 ls-1" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
+            <h6 className="text-uppercase fw-bold mb-3 ls-1 mt-4" style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
                 <i className="bi bi-upc-scan me-2"></i>Identificação & Precificação
             </h6>
 
             {!isServico && (
                 <Form.Group className="mb-4">
-                    <Form.Label className="fw-bold small text-secondary">Código de Barras Principal (EAN / SKU)</Form.Label>
-                    <InputGroup>
-                        <Form.Control
+                    <Form.Label className="fw-semibold small text-dark mb-1">Código de Barras Principal (EAN / SKU)</Form.Label>
+                    <div className="d-flex gap-2">
+                        <CustomInput
+                            icon="bi-upc-scan"
                             name="id_externo"
                             placeholder="Clique aqui e bipe a embalagem..."
                             value={formData.id_externo || ''}
                             onChange={handleChange}
-                            className="form-dark-input py-2 fw-bold"
-                            onKeyDown={(e) => {
-                                if (e.key === 'Enter') e.preventDefault();
-                            }}
+                            onKeyDown={(e) => { if (e.key === 'Enter') e.preventDefault(); }}
                         />
-                        <Button
-                            variant="outline-secondary"
-                            onClick={() => setModalScannerOpen(true)}
+                        <LightButton 
+                            onClick={() => setModalScannerOpen(true)} 
+                            className="flex-shrink-0 px-3"
                             title="Ler com a Câmera"
-                            className="d-flex align-items-center"
                         >
-                            <ScanLine size={18} className="me-2" />
-                            <span className="d-none d-sm-inline">Usar Câmera</span>
-                        </Button>
-                    </InputGroup>
+                            <ScanLine size={18} className="me-sm-2" />
+                            <span className="d-none d-sm-inline">Câmera</span>
+                        </LightButton>
+                    </div>
                 </Form.Group>
             )}
 
             <Row className="g-3 mb-3">
                 <Col md={12}>
-                    <UiField
-                        label={isServico ? "Custo do Serviço (Opcional)" : "Preço de Custo"}
-                        prefix="R$"
-                        type="number"
-                        name="preco_custo"
-                        step="0.01"
-                        value={localCusto}
-                        onChange={isCrafting ? () => { } : handleCustoChange}
-                        readOnly={isCrafting}
-                        hint={isCrafting ? "Calculado via receita" : ""}
-                    />
+                    <Form.Group>
+                        <Form.Label className="fw-semibold small text-dark mb-1">
+                            {isServico ? "Custo do Serviço (Opcional)" : "Preço de Custo"}
+                        </Form.Label>
+                        <CustomInput
+                            icon="bi-cash"
+                            type="number"
+                            name="preco_custo"
+                            step="0.01"
+                            placeholder="0,00"
+                            value={localCusto}
+                            onChange={isCrafting ? () => { } : handleCustoChange}
+                            readOnly={isCrafting}
+                        />
+                        {isCrafting && (
+                            <Form.Text className="text-muted d-block mt-1" style={{ fontSize: '11px' }}>
+                                Calculado automaticamente pela composição.
+                            </Form.Text>
+                        )}
+                    </Form.Group>
                 </Col>
 
                 <Col md={6}>
-                    <UiField
-                        label="Margem"
-                        suffix="%"
-                        type="number"
-                        name="margem_percentual"
-                        step="0.1"
-                        value={localMargem}
-                        onChange={handleMargemChange}
-                        className="text-primary fw-bold"
-                    />
+                    <Form.Group>
+                        <Form.Label className="fw-semibold small text-dark mb-1">Margem de Lucro (%)</Form.Label>
+                        <CustomInput
+                            icon="bi-percent"
+                            type="number"
+                            name="margem_percentual"
+                            step="0.1"
+                            placeholder="0,0"
+                            value={localMargem}
+                            onChange={handleMargemChange}
+                        />
+                    </Form.Group>
                 </Col>
 
                 <Col md={6}>
-                    <UiField
-                        label={isServico ? "Preço do Serviço" : "Preço de Venda Base"}
-                        prefix="R$"
-                        type="number"
-                        name="preco"
-                        step="0.01"
-                        value={localVenda}
-                        onChange={handleVendaChange}
-                        className="text-success fw-bold"
-                    />
+                    <Form.Group>
+                        <Form.Label className="fw-semibold small text-dark mb-1">
+                            {isServico ? "Preço do Serviço" : "Preço de Venda"}
+                        </Form.Label>
+                        <CustomInput
+                            icon="bi-tag-fill"
+                            type="number"
+                            name="preco"
+                            step="0.01"
+                            placeholder="0,00"
+                            value={localVenda}
+                            onChange={handleVendaChange}
+                        />
+                    </Form.Group>
                 </Col>
             </Row>
 
             {vendaVisor > 0 && (
-                <div className="p-3 rounded-3 mb-4 d-flex justify-content-between align-items-center" style={{ backgroundColor: 'var(--bg-main)', border: `1px solid ${lucroReais > 0 ? '#22c55e40' : '#ef444440'}` }}>
+                <div 
+                    className="p-3 rounded-4 mb-4 d-flex justify-content-between align-items-center" 
+                    style={{ 
+                        backgroundColor: lucroReais > 0 ? 'rgba(16, 185, 129, 0.05)' : 'rgba(239, 68, 68, 0.05)', 
+                        border: `1px solid ${lucroReais > 0 ? 'rgba(16, 185, 129, 0.2)' : 'rgba(239, 68, 68, 0.2)'}` 
+                    }}
+                >
                     <div>
-                        <small className="d-block" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Lucro Líquido</small>
-                        <span className={`fw-bold fs-6 ${lucroReais > 0 ? 'text-success' : 'text-danger'}`}>R$ {lucroReais.toFixed(2)}</span>
+                        <small className="d-block fw-bold text-uppercase" style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>Lucro Líquido Previsto</small>
+                        <span className={`fw-black fs-5 ${lucroReais > 0 ? 'text-success' : 'text-danger'}`}>
+                            R$ {lucroReais.toFixed(2)}
+                        </span>
                     </div>
-                    <Badge bg={lucroReais > 0 ? 'success' : 'danger'} className="bg-opacity-10 border fw-medium" style={{ color: lucroReais > 0 ? '#16a34a' : '#dc2626', borderColor: lucroReais > 0 ? '#16a34a' : '#dc2626' }}>
-                        {lucroReais > 0 ? 'Lucrativo' : 'Prejuízo'}
+                    <Badge bg={lucroReais > 0 ? 'success' : 'danger'} className="bg-opacity-10 border px-3 py-2 rounded-pill fw-bold" style={{ color: lucroReais > 0 ? '#10B981' : '#EF4444', borderColor: lucroReais > 0 ? '#10B981' : '#EF4444', letterSpacing: '0.5px' }}>
+                        {lucroReais > 0 ? 'LUCRATIVO' : 'PREJUÍZO'}
                     </Badge>
                 </div>
             )}
 
-            {/* 🟢 SE NÃO FOR SERVIÇO, MOSTRA CONTROLE DE ESTOQUE */}
+            {/* 🟢 CONTROLE DE ESTOQUE E VARIAÇÕES */}
             {!isServico && (
                 <>
                     <hr className="opacity-25 my-4" style={{ borderColor: 'var(--border-color)' }} />
@@ -271,100 +315,125 @@ const ProductPricing = ({ formData, handleChange, setFormData, estoqueOriginal, 
 
                     <Row className="g-3 mb-4">
                         <Col xs={5}>
-                            <UiField
-                                label="Unidade"
-                                type="select"
-                                name="unidade"
-                                value={formData.unidade || 'UN'}
-                                onChange={handleChange}
-                                options={[
-                                    { value: 'UN', label: 'UN - Unidade' },
-                                    { value: 'KG', label: 'KG - Quilograma' },
-                                    { value: 'G', label: 'G - Grama' },
-                                    { value: 'M', label: 'M - Metro' },
-                                    { value: 'CM', label: 'CM - Centímetro' },
-                                    { value: 'L', label: 'L - Litro' },
-                                    { value: 'ML', label: 'ML - Mililitro' },
-                                    { value: 'CX', label: 'CX - Caixa' },
-                                    { value: 'FD', label: 'FD - Fardo' }, // 🟢 NOVA UNIDADE
-                                    { value: 'RL', label: 'RL - Rolo/Bobina' }, // 🟢 NOVA UNIDADE
-                                    { value: 'PCT', label: 'PCT - Pacote' },
-                                    { value: 'M2', label: 'M² - Metro Quadrado' }
-                                ]}
-                            />
+                            <Form.Group>
+                                <Form.Label className="fw-semibold small text-dark mb-1">Unidade</Form.Label>
+                                <Form.Select
+                                    name="unidade"
+                                    value={formData.unidade || 'UN'}
+                                    onChange={handleChange}
+                                    style={flatSelectStyle}
+                                >
+                                    <option value="UN">UN - Unid</option>
+                                    <option value="KG">KG - Quilo</option>
+                                    <option value="G">G - Grama</option>
+                                    <option value="M">M - Metro</option>
+                                    <option value="CM">CM - Cent.</option>
+                                    <option value="L">L - Litro</option>
+                                    <option value="ML">ML - Mililitro</option>
+                                    <option value="CX">CX - Caixa</option>
+                                    <option value="FD">FD - Fardo</option>
+                                    <option value="RL">RL - Rolo</option>
+                                    <option value="PCT">PCT - Pacote</option>
+                                    <option value="M2">M² - Metro Q.</option>
+                                </Form.Select>
+                            </Form.Group>
                         </Col>
                         <Col xs={7}>
-                            <UiField
-                                label={hasVariacoes ? "Estoque Total (Soma da Grade)" : "Em Estoque"}
-                                suffix={formData.unidade || 'UN'}
-                                type="number"
-                                name="estoque"
-                                step="0.001" // 🟢 AQUI: Permite digitar estoque quebrado (Ex: 2.5) na hora do cadastro!
-                                value={hasVariacoes ? estoqueTotalVariacoes : formData.estoque}
-                                onChange={handleChange}
-                                readOnly={isCrafting || hasVariacoes}
-                                className={(estoqueAlterado || isCrafting || hasVariacoes) ? "text-warning fw-bold" : ""}
-                                hint={hasVariacoes ? "Calculado via variações" : (isCrafting ? "Calculado via receita" : "")}
-                            />
+                            <Form.Group>
+                                <Form.Label className="fw-semibold small text-dark mb-1">
+                                    {hasVariacoes ? "Estoque (Soma da Grade)" : "Em Estoque"}
+                                </Form.Label>
+                                <CustomInput
+                                    icon="bi-boxes"
+                                    type="number"
+                                    name="estoque"
+                                    step="0.001"
+                                    placeholder="0"
+                                    value={hasVariacoes ? estoqueTotalVariacoes : formData.estoque}
+                                    onChange={handleChange}
+                                    readOnly={isCrafting || hasVariacoes}
+                                />
+                                {(hasVariacoes || isCrafting) && (
+                                    <Form.Text className="text-muted d-block mt-1" style={{ fontSize: '11px' }}>
+                                        {hasVariacoes ? "Bloqueado (Calculado via grade)" : "Calculado via produção"}
+                                    </Form.Text>
+                                )}
+                            </Form.Group>
                         </Col>
                     </Row>
 
                     <div>
-                        <Form.Label className="fw-bold small text-primary mb-3">Variações (Tamanhos e Cores)</Form.Label>
+                        <Form.Label className="fw-bold small text-primary mb-3">
+                            <i className="bi bi-tags me-2"></i>Variações Opcionais (Cores, Tamanhos...)
+                        </Form.Label>
 
+                        {/* Nova Variação (Formulário Limpo) */}
                         <Row className="g-2 align-items-end mb-3">
-                            <Col md={2}>
-                                <Form.Control size="sm" placeholder="Tam. (M, 38)" value={novaVariacao.tamanho} onChange={e => setNovaVariacao({ ...novaVariacao, tamanho: e.target.value })} className="form-dark-input" />
+                            <Col xs={6} md={2}>
+                                <CustomInput placeholder="Tam. (P, M)" value={novaVariacao.tamanho} onChange={e => setNovaVariacao({ ...novaVariacao, tamanho: e.target.value })} />
                             </Col>
-                            <Col md={3}>
-                                <Form.Control size="sm" placeholder="Cor (Verde)" value={novaVariacao.cor} onChange={e => setNovaVariacao({ ...novaVariacao, cor: e.target.value })} className="form-dark-input" />
+                            <Col xs={6} md={3}>
+                                <CustomInput placeholder="Cor (Azul)" value={novaVariacao.cor} onChange={e => setNovaVariacao({ ...novaVariacao, cor: e.target.value })} />
                             </Col>
-                            <Col md={2}>
-                                {/* 🟢 AQUI: Permite variações fracionadas também */}
-                                <Form.Control size="sm" type="number" step="0.001" placeholder="Estoque" value={novaVariacao.estoque} onChange={e => setNovaVariacao({ ...novaVariacao, estoque: e.target.value })} className="form-dark-input" />
+                            <Col xs={4} md={2}>
+                                <CustomInput type="number" step="0.001" placeholder="Estoque" value={novaVariacao.estoque} onChange={e => setNovaVariacao({ ...novaVariacao, estoque: e.target.value })} />
                             </Col>
-                            <Col md={2}>
-                                <Form.Control size="sm" type="number" step="0.01" placeholder="+ Preço (R$)" value={novaVariacao.preco_adicional} onChange={e => setNovaVariacao({ ...novaVariacao, preco_adicional: e.target.value })} className="form-dark-input" />
+                            <Col xs={4} md={2}>
+                                <CustomInput type="number" step="0.01" placeholder="+ R$ Valor" value={novaVariacao.preco_adicional} onChange={e => setNovaVariacao({ ...novaVariacao, preco_adicional: e.target.value })} />
                             </Col>
-                            <Col md={2}>
-                                <Form.Control size="sm" placeholder="SKU/Cód" value={novaVariacao.sku} onChange={e => setNovaVariacao({ ...novaVariacao, sku: e.target.value })} className="form-dark-input" />
+                            <Col xs={4} md={2}>
+                                <CustomInput placeholder="Cód/SKU" value={novaVariacao.sku} onChange={e => setNovaVariacao({ ...novaVariacao, sku: e.target.value })} />
                             </Col>
-                            <Col md={1}>
-                                <Button variant="primary" size="sm" className="w-100" onClick={handleAddVariacao} disabled={!novaVariacao.tamanho && !novaVariacao.cor}>
-                                    <Plus size={16} />
-                                </Button>
+                            <Col xs={12} md={1}>
+                                <GreenSquareButton className="w-100" onClick={handleAddVariacao} disabled={!novaVariacao.tamanho && !novaVariacao.cor}>
+                                    <Plus size={20} />
+                                </GreenSquareButton>
                             </Col>
                         </Row>
 
+                        {/* 👇 AQUI USAMOS A NOSSA FLAT LIST PARA AS VARIAÇÕES 👇 */}
                         {hasVariacoes && (
-                            <Table size="sm" variant="dark" responsive className="mt-3 mb-0 text-center" style={{ fontSize: '0.85rem' }}>
-                                <thead>
-                                    <tr>
-                                        <th>Tamanho</th>
-                                        <th>Cor</th>
-                                        <th>Estoque</th>
-                                        <th>+ Valor</th>
-                                        <th>SKU</th>
-                                        <th>Ação</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                            <div className="mt-3">
+                                <FlatListContainer loading={false} empty={false}>
+                                    <FlatListHeader>
+                                        <div style={{ width: '20%' }}>Tamanho</div>
+                                        <div style={{ width: '25%' }}>Cor</div>
+                                        <div style={{ width: '15%' }}>Estoque</div>
+                                        <div style={{ width: '15%' }}>+ Valor</div>
+                                        <div style={{ width: '15%' }}>SKU</div>
+                                        <div style={{ width: '10%' }} className="text-end"></div>
+                                    </FlatListHeader>
+
                                     {variacoes.map((v, idx) => (
-                                        <tr key={idx} className="align-middle">
-                                            <td className="fw-bold">{v.tamanho || '-'}</td>
-                                            <td>{v.cor || '-'}</td>
-                                            <td className="text-warning fw-bold">{v.estoque || 0}</td>
-                                            <td className="text-success">{v.preco_adicional ? `+R$ ${v.preco_adicional}` : '-'}</td>
-                                            <td className="text-muted">{v.sku || '-'}</td>
-                                            <td>
-                                                <Button variant="outline-danger" size="sm" className="py-0 px-2" onClick={() => handleRemoveVariacao(idx)}>
-                                                    <Trash2 size={14} />
-                                                </Button>
-                                            </td>
-                                        </tr>
+                                        <FlatListItem key={idx} className="py-2"> {/* py-2 deixa as linhas menores */}
+                                            <div style={{ width: '20%' }} className="fw-bold mb-1 mb-md-0">
+                                                <span className="d-inline d-md-none me-1 text-muted fw-normal">Tamanho:</span>
+                                                {v.tamanho || '-'}
+                                            </div>
+                                            <div style={{ width: '25%' }} className="mb-1 mb-md-0">
+                                                <span className="d-inline d-md-none me-1 text-muted fw-normal">Cor:</span>
+                                                {v.cor || '-'}
+                                            </div>
+                                            <div style={{ width: '15%' }} className="text-warning fw-bold mb-1 mb-md-0">
+                                                <span className="d-inline d-md-none me-1 text-muted fw-normal">Estoque:</span>
+                                                {v.estoque || 0}
+                                            </div>
+                                            <div style={{ width: '15%' }} className="text-success fw-medium mb-1 mb-md-0">
+                                                <span className="d-inline d-md-none me-1 text-muted fw-normal">Acréscimo:</span>
+                                                {v.preco_adicional ? `+R$ ${v.preco_adicional}` : '-'}
+                                            </div>
+                                            <div style={{ width: '15%' }} className="text-muted small mb-2 mb-md-0">
+                                                {v.sku || 'Sem SKU'}
+                                            </div>
+                                            <div style={{ width: '10%' }} className="text-end">
+                                                <RedSquareButton size={36} radius={10} onClick={() => handleRemoveVariacao(idx)}>
+                                                    <Trash2 size={16} />
+                                                </RedSquareButton>
+                                            </div>
+                                        </FlatListItem>
                                     ))}
-                                </tbody>
-                            </Table>
+                                </FlatListContainer>
+                            </div>
                         )}
                     </div>
                 </>

@@ -10,7 +10,8 @@ import ProductOrganization from './sections/ProductOrganization';
 import ProductAttributes from './sections/ProductAttributes';
 import ProductRecipe from './sections/ProductRecipe';
 import ProductSettings from './sections/ProductSettings';
-import ProductFiscal from './sections/ProductFiscal'; // 🟢 NOVO COMPONENTE IMPORTADO
+import ProductFiscal from './sections/ProductFiscal'; 
+import ProductComplements from './sections/ProductComplements'; // 🟢 NOVO COMPONENTE IMPORTADO
 
 import UiField from '../ui/UiField';
 
@@ -53,7 +54,6 @@ const ProductEditForm = () => {
     const [currentStep, setCurrentStep] = useState(0);
     const [creationMode, setCreationMode] = useState('manual');
 
-    // 🟢 ADICIONADO: TODOS OS CAMPOS FISCAIS AQUI
     const [formData, setFormData] = useState({
         id_externo: '', nome: '', preco: '', preco_custo: '', imagem_url: '', estoque: '', descricao: '',
         id_categoria: '', id_subcategoria: '', id_marca: '', id_fornecedor: '',
@@ -67,6 +67,7 @@ const ProductEditForm = () => {
 
     const [subImages, setSubImages] = useState(['']);
     const [composition, setComposition] = useState([]);
+    const [gruposComplemento, setGruposComplemento] = useState([]); // 🟢 NOVO ESTADO: Adicionais Nível iFood
 
     const [categorias, setCategorias] = useState([]);
     const [filteredSubcategories, setFilteredSubcategories] = useState([]);
@@ -102,12 +103,11 @@ const ProductEditForm = () => {
             try {
                 const prodRes = await api.get(`/produtos/${productId}`);
                 const data = prodRes.data;
-                const { ml_attributes, produto_subimagens, composicao_pai, produto_variacoes, tempo_duracao, ...basicData } = data;
+                const { ml_attributes, produto_subimagens, composicao_pai, produto_variacoes, tempo_duracao, grupos_complemento, ...basicData } = data;
 
                 if (basicData.tipo_produto === 'MISTO') setCreationMode('crafting');
                 else setCreationMode('manual');
 
-                // 🟢 Preenche os dados trazendo as informações fiscais do banco
                 setFormData({
                     ...basicData,
                     id_externo: basicData.id_externo || '',
@@ -145,6 +145,22 @@ const ProductEditForm = () => {
                         quantidade_usada: Number(item.quantidade_necessaria),
                         quantidade_real: Number(item.quantidade_necessaria),
                         custo_unitario: Number(item.insumo.preco_custo || 0)
+                    })));
+                }
+
+                // 🟢 CARREGANDO OS ADICIONAIS/COMPLEMENTOS DA API
+                if (grupos_complemento?.length > 0) {
+                    setGruposComplemento(grupos_complemento.map(gc => ({
+                        nome: gc.nome,
+                        minimo: gc.minimo,
+                        maximo: gc.maximo,
+                        tipo_grupo: gc.tipo_grupo || 'CHOICE',
+                        complementos: gc.complementos.map(c => ({
+                            id_produto_add: c.id_produto_add,
+                            preco_adicional: Number(c.preco_adicional),
+                            minimo: c.minimo !== undefined ? Number(c.minimo) : 0,
+                            maximo: c.maximo !== undefined ? Number(c.maximo) : 1
+                        }))
                     })));
                 }
 
@@ -238,7 +254,6 @@ const ProductEditForm = () => {
                 .filter(([, value]) => value !== '' && value != null)
                 .map(([key, value]) => ({ id: key, value_name: String(value) }));
 
-            // 🟢 Formata os números fiscais antes de mandar pro backend
             const payload = {
                 ...formData,
                 preco: parseSafeNumber(formData.preco) || 0,
@@ -247,7 +262,6 @@ const ProductEditForm = () => {
                 estoque_minimo: parseSafeNumber(formData.estoque_minimo) || 0,
                 tempo_duracao: formData.tipo_produto === 'SERVICO' ? (parseSafeNumber(formData.duracao_minutos) || 60) : null,
 
-                // Conversão Segura de Alíquotas
                 aliq_icms: parseSafeNumber(formData.aliq_icms) || 0,
                 aliq_pis: parseSafeNumber(formData.aliq_pis) || 0,
                 aliq_cofins: parseSafeNumber(formData.aliq_cofins) || 0,
@@ -259,6 +273,10 @@ const ProductEditForm = () => {
                 ml_attributes: showMlAttributes ? ml_attributes_array : [],
                 tipo_produto: formData.tipo_produto,
                 variacoes: formData.variacoes || [],
+                
+                // 🟢 MANDA OS ADICIONAIS / PERSONALIZAÇÃO PRO BACKEND AQUI
+                grupos_complemento: gruposComplemento, 
+
                 composicao_pai: formData.tipo_produto === 'MISTO' ? composition.map(c => ({
                     id_insumo: c.id_insumo, quantidade_necessaria: c.quantidade_real
                 })) : [],
@@ -297,11 +315,10 @@ const ProductEditForm = () => {
         catch { setCategoryAttributes([]); } finally { setIsFetchingAttributes(false); }
     };
 
-    // --- 🟢 WIZARD: ADICIONADA A ETAPA "FISCAL" ---
     const steps = [
         { id: 'essenciais', label: 'Essenciais e Preço' },
         { id: 'config', label: 'Configuração e Logística' },
-        { id: 'fiscal', label: 'Tributação (NF)' }, // NOVA ETAPA AQUI!
+        { id: 'fiscal', label: 'Tributação (NF)' }, 
     ];
 
     if (creationMode === 'crafting') {
@@ -349,6 +366,15 @@ const ProductEditForm = () => {
                             estoqueOriginal={estoqueOriginal}
                             isCrafting={creationMode === 'crafting'}
                         />
+
+                        {/* 🟢 O SEU NOVO COMPONENTE DE PERSONALIZAÇÃO NÍVEL IFOOD! */}
+                        {podeEditar && (
+                            <ProductComplements 
+                                allProducts={allProducts} 
+                                groups={gruposComplemento} 
+                                setGroups={setGruposComplemento} 
+                            />
+                        )}
                     </div>
                 );
             case 'config':

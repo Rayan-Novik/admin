@@ -1,7 +1,11 @@
 import React from 'react';
-import { Table, Image, Form, Button, OverlayTrigger, Tooltip, Badge, Dropdown } from 'react-bootstrap';
+import { Image, Form, OverlayTrigger, Tooltip, Badge, Dropdown } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
+
+// Importando os novos componentes universais
+import { SquareButton } from '../ui/buttons/SquareButton';
+import { FlatListContainer, FlatListHeader, FlatListItem } from '../ui/listagem/FlatList';
 
 // --- HELPERS ---
 const formatStock = (val, unit) => {
@@ -56,45 +60,49 @@ const ProductDesktopTable = ({
         permissoesUsuario = dadosUser.cargo.permissoes;
     }
 
-    // 🛑 CHAVES DE ACESSO:
     const podeEditar = isDono || permissoesUsuario.includes('PRODUTOS_MANAGE');
     const podeVer = isDono || permissoesUsuario.includes('PRODUTOS_VIEW') || podeEditar;
     // ==============================================================
 
     return (
-        <div className="rounded-4 shadow-sm overflow-hidden mb-4 border" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}>
-            {/* 🟢 Adicionada a classe 'table-dark-fix' aqui em baixo */}
-            <Table responsive className="mb-0 align-middle text-nowrap table-borderless table-dark-fix">
-                <thead style={{ borderBottom: '1px solid var(--border-color)', backgroundColor: 'var(--bg-main)' }}>
-                    <tr>
-                        <th className="py-3 ps-4 text-uppercase fw-semibold" style={{ fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>Produto</th>
-                        <th className="py-3 text-uppercase fw-semibold" style={{ fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>Estoque & Preço</th>
-                        <th className="py-3 text-center text-uppercase fw-semibold" style={{ fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>Status & Canais</th>
-                        <th className="py-3 pe-4 text-end text-uppercase fw-semibold" style={{ fontSize: '11px', color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>Gerenciar</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {products.map(p => {
-                        const categoryName = p.categorias?.nome || 
-                                             categoriesList.find(c => c.id_categoria == p.id_categoria)?.nome || 
-                                             'Sem Categoria';
+        <div className="mb-4">
+            <FlatListContainer 
+                loading={false} 
+                empty={products.length === 0} 
+                emptyMessage="Nenhum produto cadastrado no catálogo."
+                emptyIcon="bi-box-seam"
+            >
+                {/* 🟢 CABEÇALHO DESKTOP (Grid System) */}
+                <FlatListHeader>
+                    <div className="col-lg-4 ps-2">Produto</div>
+                    <div className="col-lg-3">Estoque & Preço</div>
+                    <div className="col-lg-3 text-center">Status & Canais</div>
+                    <div className="col-lg-2 text-end pe-2">Gerenciar</div>
+                </FlatListHeader>
 
-                        return (
-                            <motion.tr 
-                                key={p.id_produto} 
-                                initial={{ opacity: 0 }} 
-                                animate={{ opacity: 1 }} 
-                                className={`border-bottom hover-effect ${!p.active_ecommerce ? 'opacity-75' : ''}`}
-                                style={{ borderColor: 'var(--border-color)' }}
-                            >
-                                {/* COLUNA 1: INFO BÁSICA */}
-                                <td className="ps-4 py-3">
-                                    <div className="d-flex align-items-center">
-                                        <div className="position-relative">
+                {/* 🟢 LISTAGEM DOS PRODUTOS */}
+                {products.map(p => {
+                    const categoryName = p.categorias?.nome || 
+                                         categoriesList.find(c => c.id_categoria == p.id_categoria)?.nome || 
+                                         'Sem Categoria';
+
+                    return (
+                        <motion.div 
+                            key={p.id_produto} 
+                            initial={{ opacity: 0, y: 10 }} 
+                            animate={{ opacity: 1, y: 0 }}
+                            className="w-100"
+                        >
+                            <FlatListItem>
+                                <div className={`row w-100 m-0 align-items-center ${!p.active_ecommerce ? 'opacity-75' : ''}`}>
+                                    
+                                    {/* COLUNA 1: INFO BÁSICA */}
+                                    <div className="col-12 col-lg-4 d-flex align-items-center mb-3 mb-lg-0 p-0">
+                                        <div className="position-relative flex-shrink-0">
                                             <Image 
                                                 src={p.imagem_url || defaultImage} 
                                                 rounded 
-                                                style={{ width: '56px', height: '56px', objectFit: 'cover', borderColor: 'var(--border-color)' }} 
+                                                style={{ width: '60px', height: '60px', objectFit: 'cover', borderColor: 'var(--border-color)' }} 
                                                 className="shadow-sm border" 
                                                 onError={(e) => { e.target.src = defaultImage; }} 
                                             />
@@ -102,42 +110,45 @@ const ProductDesktopTable = ({
                                                 {getTypeBadge(p.tipo_produto)}
                                             </div>
                                         </div>
-                                        <div className="ms-3">
-                                            <div className="fw-bold text-truncate" style={{ maxWidth: '280px', color: 'var(--text-primary)', fontSize: '13px' }}>{p.nome}</div>
-                                            <div className="d-flex gap-2 small mt-1" style={{ color: 'var(--text-secondary)', fontSize: '11px' }}>
+                                        <div className="ms-3 overflow-hidden">
+                                            <div className="fw-bold text-truncate" style={{ color: 'var(--text-primary)', fontSize: '14px' }}>
+                                                {p.nome}
+                                            </div>
+                                            <div className="d-flex flex-wrap gap-2 small mt-1" style={{ color: 'var(--text-secondary)', fontSize: '12px' }}>
                                                 <span>SKU: {p.id_produto}</span>
-                                                <span>•</span>
-                                                <span style={{ color: '#2563eb' }}>{categoryName}</span>
+                                                <span className="d-none d-sm-inline">•</span>
+                                                <span style={{ color: '#0A84FF', fontWeight: 500 }}>{categoryName}</span>
                                             </div>
                                         </div>
                                     </div>
-                                </td>
 
-                                {/* COLUNA 2: PREÇO E ESTOQUE */}
-                                <td>
-                                    <div className="d-flex flex-column">
-                                        <span className="fw-bold fs-6" style={{ color: 'var(--text-primary)' }}>R$ {parseFloat(p.preco).toFixed(2)}</span>
-                                        <div className={`d-flex align-items-center small ${p.estoque > 0 ? 'text-success' : 'text-danger'}`}>
-                                            <i className={`bi bi-${p.estoque > 0 ? 'box-seam' : 'exclamation-circle'} me-1`}></i>
-                                            {formatStock(p.estoque, p.unidade)} {p.unidade}
+                                    {/* COLUNA 2: PREÇO E ESTOQUE */}
+                                    <div className="col-6 col-lg-3 p-0">
+                                        <div className="d-flex flex-column">
+                                            <span className="fw-bold fs-6" style={{ color: 'var(--text-primary)' }}>
+                                                R$ {parseFloat(p.preco).toFixed(2)}
+                                            </span>
+                                            <div className={`d-flex align-items-center small ${p.estoque > 0 ? 'text-success fw-medium' : 'text-danger fw-bold'}`}>
+                                                <i className={`bi bi-${p.estoque > 0 ? 'box-seam' : 'exclamation-circle'} me-1`}></i>
+                                                {formatStock(p.estoque, p.unidade)} {p.unidade}
+                                            </div>
                                         </div>
                                     </div>
-                                </td>
 
-                                {/* COLUNA 3: INTEGRAÇÕES (Consolidado) */}
-                                <td>
-                                    <div className="d-flex align-items-center justify-content-center gap-4">
+                                    {/* COLUNA 3: INTEGRAÇÕES (CANAIS) */}
+                                    <div className="col-6 col-lg-3 d-flex align-items-center justify-content-end justify-content-lg-center gap-3 gap-md-4 p-0">
+                                        
                                         {/* Switch Loja Virtual */}
                                         <div className="d-flex flex-column align-items-center" title="Loja Virtual">
                                             <Form.Check 
                                                 type="switch" 
                                                 checked={p.active_ecommerce} 
                                                 onChange={() => podeEditar && toggleEcommerce(p.id_produto, p.active_ecommerce)} 
-                                                className="m-0"
-                                                disabled={!podeEditar} // 🟢 DESATIVA O SWITCH SE NÃO PUDER EDITAR
+                                                className="m-0 custom-switch"
+                                                disabled={!podeEditar} 
                                                 style={{ cursor: podeEditar ? 'pointer' : 'not-allowed' }}
                                             />
-                                            <small style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Loja</small>
+                                            <small style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>LOJA</small>
                                         </div>
 
                                         {/* Ícone Mercado Livre */}
@@ -151,7 +162,7 @@ const ProductDesktopTable = ({
                                                     <i className="bi bi-handbag fs-5 opacity-25" style={{ color: 'var(--text-secondary)' }}></i>
                                                 </OverlayTrigger>
                                             )}
-                                            <small style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>ML</small>
+                                            <small style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>ML</small>
                                         </div>
 
                                         {/* Ícone Facebook */}
@@ -160,66 +171,61 @@ const ProductDesktopTable = ({
                                                 <OverlayTrigger placement="top" overlay={<Tooltip>Integração Meta</Tooltip>}>
                                                     <i className="bi bi-facebook fs-5" style={{ color: '#1877F2' }}></i>
                                                 </OverlayTrigger>
-                                                <small style={{ fontSize: '0.65rem', color: 'var(--text-secondary)' }}>Social</small>
+                                                <small style={{ fontSize: '10px', color: 'var(--text-secondary)' }}>META</small>
                                             </div>
                                         )}
                                     </div>
-                                </td>
 
-                                {/* COLUNA 4: AÇÕES (Limpo) */}
-                                <td className="pe-4 text-end">
-                                    <div className="d-inline-flex align-items-center gap-2">
+                                    {/* COLUNA 4: AÇÕES */}
+                                    <div className="col-12 col-lg-2 d-flex justify-content-end align-items-center gap-2 mt-3 mt-lg-0 p-0">
                                         
-                                        {/* 🟢 Ação Principal: EDITAR ou VISUALIZAR */}
+                                        {/* Ação Principal: EDITAR ou VISUALIZAR usando SquareButton */}
                                         {podeEditar ? (
                                             <OverlayTrigger placement="top" overlay={<Tooltip>Editar Produto</Tooltip>}>
-                                                <Button 
+                                                <SquareButton 
                                                     as={Link} 
-                                                    to={`/admin/product/${p.id_produto}/edit`} 
-                                                    variant="light" 
-                                                    size="sm" 
-                                                    className="btn-icon rounded-circle border shadow-sm"
-                                                    style={{ width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'var(--bg-main)', borderColor: 'var(--border-color)', color: 'var(--text-primary)' }}
+                                                    to={`/admin/product/${p.id_produto}/edit`}
                                                 >
-                                                    <i className="bi bi-pencil-fill" style={{ fontSize: '12px' }}></i>
-                                                </Button>
+                                                    <i className="bi bi-pencil-fill"></i>
+                                                </SquareButton>
                                             </OverlayTrigger>
                                         ) : podeVer ? (
                                             <OverlayTrigger placement="top" overlay={<Tooltip>Visualizar Detalhes</Tooltip>}>
-                                                <Button 
+                                                <SquareButton 
                                                     as={Link} 
                                                     to={`/admin/product/${p.id_produto}/edit`} 
-                                                    variant="light" 
-                                                    size="sm" 
-                                                    className="btn-icon rounded-circle border shadow-sm text-primary"
-                                                    style={{ width: 32, height: 32, padding: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(13, 110, 253, 0.1)', borderColor: 'var(--border-color)' }}
+                                                    color="var(--bg-sidebar, #F4F6FA)"
+                                                    style={{ color: 'var(--text-secondary)' }}
                                                 >
-                                                    <i className="bi bi-eye-fill" style={{ fontSize: '12px' }}></i>
-                                                </Button>
+                                                    <i className="bi bi-eye-fill"></i>
+                                                </SquareButton>
                                             </OverlayTrigger>
                                         ) : null}
 
-                                        {/* 🟢 Dropdown para todo o resto (SÓ APARECE SE PUDER EDITAR) */}
+                                        {/* Dropdown de Opções Extras */}
                                         {podeEditar && (
                                             <Dropdown align="end">
-                                                <Dropdown.Toggle variant="light" size="sm" className="btn-icon rounded-circle border-0" style={{ width: 32, height: 32, padding: 0, backgroundColor: 'transparent', color: 'var(--text-secondary)' }}>
+                                                <Dropdown.Toggle 
+                                                    variant="none" 
+                                                    className="d-flex align-items-center justify-content-center border-0 shadow-none flat-dropdown-toggle" 
+                                                >
                                                     <i className="bi bi-three-dots-vertical"></i>
                                                 </Dropdown.Toggle>
 
-                                                <Dropdown.Menu className="shadow-lg border-0 rounded-3 p-2 custom-dropdown" style={{ minWidth: '220px' }}>
+                                                <Dropdown.Menu className="shadow-lg border-0 rounded-4 p-2 custom-dropdown" style={{ minWidth: '220px' }}>
                                                     <div className="small fw-bold px-3 py-1 text-uppercase" style={{ color: 'var(--text-secondary)', fontSize: '10px', letterSpacing: '0.5px' }}>Produção</div>
                                                     
                                                     {/* Fabricação */}
                                                     {p.tipo_produto !== 'INSUMO' && (
-                                                        <Dropdown.Item onClick={() => onShowCraft(p)} className="rounded-2 py-2 d-flex align-items-center">
-                                                            <i className="bi bi-hammer me-2 text-primary"></i> <span style={{ fontSize: '13px' }}>Fabricar Item</span>
+                                                        <Dropdown.Item onClick={() => onShowCraft(p)} className="rounded-3 py-2 d-flex align-items-center">
+                                                            <i className="bi bi-hammer me-2" style={{ color: '#0A84FF' }}></i> <span className="fw-medium" style={{ fontSize: '13px' }}>Fabricar Item</span>
                                                         </Dropdown.Item>
                                                     )}
-                                                    <Dropdown.Item onClick={() => onShowComposition(p)} className="rounded-2 py-2 d-flex align-items-center">
-                                                        <i className="bi bi-list-check me-2 text-info"></i> <span style={{ fontSize: '13px' }}>Receita / Insumos</span>
+                                                    <Dropdown.Item onClick={() => onShowComposition(p)} className="rounded-3 py-2 d-flex align-items-center">
+                                                        <i className="bi bi-list-check me-2 text-info"></i> <span className="fw-medium" style={{ fontSize: '13px' }}>Receita / Insumos</span>
                                                     </Dropdown.Item>
-                                                    <Dropdown.Item onClick={() => onShowHistory(p)} className="rounded-2 py-2 d-flex align-items-center">
-                                                        <i className="bi bi-clock-history me-2 text-secondary"></i> <span style={{ fontSize: '13px' }}>Histórico Estoque</span>
+                                                    <Dropdown.Item onClick={() => onShowHistory(p)} className="rounded-3 py-2 d-flex align-items-center">
+                                                        <i className="bi bi-clock-history me-2 text-secondary"></i> <span className="fw-medium" style={{ fontSize: '13px' }}>Histórico Estoque</span>
                                                     </Dropdown.Item>
 
                                                     <div className="dropdown-divider my-2" style={{ borderColor: 'var(--border-color)' }}></div>
@@ -228,79 +234,83 @@ const ProductDesktopTable = ({
                                                     {/* Mercado Livre Actions */}
                                                     {p.mercado_livre_id ? (
                                                         <>
-                                                            <Dropdown.Item onClick={() => updateStatusHandler(p.id_produto, p.ml_status)} className="rounded-2 py-2 d-flex align-items-center">
+                                                            <Dropdown.Item onClick={() => updateStatusHandler(p.id_produto, p.ml_status)} className="rounded-3 py-2 d-flex align-items-center">
                                                                 <i className={`bi bi-${p.ml_status === 'active' ? 'pause' : 'play'}-circle me-2 text-warning`}></i>
-                                                                <span style={{ fontSize: '13px' }}>{p.ml_status === 'active' ? 'Pausar no ML' : 'Ativar no ML'}</span>
+                                                                <span className="fw-medium" style={{ fontSize: '13px' }}>{p.ml_status === 'active' ? 'Pausar no ML' : 'Ativar no ML'}</span>
                                                             </Dropdown.Item>
-                                                            <Dropdown.Item onClick={() => syncStatus(p.id_produto)} className="rounded-2 py-2 d-flex align-items-center">
-                                                                <i className="bi bi-arrow-repeat me-2 text-success"></i> <span style={{ fontSize: '13px' }}>Sincronizar ML</span>
+                                                            <Dropdown.Item onClick={() => syncStatus(p.id_produto)} className="rounded-3 py-2 d-flex align-items-center">
+                                                                <i className="bi bi-arrow-repeat me-2 text-success"></i> <span className="fw-medium" style={{ fontSize: '13px' }}>Sincronizar ML</span>
                                                             </Dropdown.Item>
                                                         </>
                                                     ) : (
-                                                        <Dropdown.Item onClick={() => publishHandler(p.id_produto)} className="rounded-2 py-2 d-flex align-items-center">
-                                                            <i className="bi bi-upload text-warning me-2"></i> <span style={{ fontSize: '13px' }}>Publicar no ML</span>
+                                                        <Dropdown.Item onClick={() => publishHandler(p.id_produto)} className="rounded-3 py-2 d-flex align-items-center">
+                                                            <i className="bi bi-upload text-warning me-2"></i> <span className="fw-medium" style={{ fontSize: '13px' }}>Publicar no ML</span>
                                                         </Dropdown.Item>
                                                     )}
 
                                                     {/* Facebook Actions */}
                                                     {isFacebookReady && (
                                                         <>
-                                                            <Dropdown.Item onClick={() => handlePostOrganico(p.id_produto)} className="rounded-2 py-2 d-flex align-items-center">
-                                                                <i className="bi bi-facebook text-primary me-2"></i> <span style={{ fontSize: '13px' }}>Postar Orgânico</span>
+                                                            <Dropdown.Item onClick={() => handlePostOrganico(p.id_produto)} className="rounded-3 py-2 d-flex align-items-center">
+                                                                <i className="bi bi-facebook text-primary me-2"></i> <span className="fw-medium" style={{ fontSize: '13px' }}>Postar Orgânico</span>
                                                             </Dropdown.Item>
                                                             {fbConfig.FB_AD_ACCOUNT_ID && (
-                                                                <Dropdown.Item onClick={() => handleAnuncioPago(p.id_produto)} className="rounded-2 py-2 d-flex align-items-center">
-                                                                    <i className="bi bi-megaphone text-success me-2"></i> <span style={{ fontSize: '13px' }}>Criar Anúncio</span>
+                                                                <Dropdown.Item onClick={() => handleAnuncioPago(p.id_produto)} className="rounded-3 py-2 d-flex align-items-center">
+                                                                    <i className="bi bi-megaphone text-success me-2"></i> <span className="fw-medium" style={{ fontSize: '13px' }}>Criar Anúncio</span>
                                                                 </Dropdown.Item>
                                                             )}
                                                         </>
                                                     )}
 
                                                     <div className="dropdown-divider my-2" style={{ borderColor: 'var(--border-color)' }}></div>
-                                                    <Dropdown.Item onClick={() => deleteHandler(p.id_produto)} className="rounded-2 py-2 text-danger d-flex align-items-center">
+                                                    <Dropdown.Item onClick={() => deleteHandler(p.id_produto)} className="rounded-3 py-2 text-danger d-flex align-items-center">
                                                         <i className="bi bi-trash me-2"></i> <span className="fw-bold" style={{ fontSize: '13px' }}>Excluir Produto</span>
                                                     </Dropdown.Item>
                                                 </Dropdown.Menu>
                                             </Dropdown>
                                         )}
                                     </div>
-                                </td>
-                            </motion.tr>
-                        );
-                    })}
-                </tbody>
-            </Table>
+                                </div>
+                            </FlatListItem>
+                        </motion.div>
+                    );
+                })}
+            </FlatListContainer>
             
             <style>{`
-                /* 🟢 CORES PADRÃO PARA HOVER (USADAS EM MODO CLARO E ESCURO) */
-                .hover-effect:hover td { background-color: var(--bg-hover, #f1f5f9) !important; }
-                
-                /* 🟢 MODO ESCURO GERAL DA TABELA (Bootstrap Overrides) */
-                .table-dark-fix {
-                    --bs-table-bg: transparent;
+                /* Estilização do Botão de Opções (Dropdown) para combinar com a interface plana */
+                .flat-dropdown-toggle {
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 14px;
+                    background-color: transparent;
+                    color: var(--text-secondary, #64748b);
+                    transition: all 0.2s ease;
+                }
+                .flat-dropdown-toggle:hover {
+                    background-color: rgba(100, 116, 139, 0.1);
                     color: var(--text-primary);
                 }
-                .table-dark-fix th {
-                    color: var(--text-secondary);
-                    font-weight: 600;
-                    border-bottom: 1px solid var(--border-color);
+                .flat-dropdown-toggle::after {
+                    display: none !important; /* Esconde a setinha nativa do dropdown */
                 }
-                .table-dark-fix td {
-                    border-bottom: 1px solid var(--border-color);
-                    vertical-align: middle;
+
+                /* Customização visual dos switches */
+                .custom-switch .form-check-input {
+                    cursor: pointer;
+                    width: 2.5rem;
+                    height: 1.25rem;
+                }
+                .custom-switch .form-check-input:focus {
+                    box-shadow: none;
+                    border-color: rgba(0,0,0,0.25);
+                }
+                .custom-switch .form-check-input:checked {
+                    background-color: #10B981;
+                    border-color: #10B981;
                 }
 
                 /* 🟢 MODO ESCURO: CORREÇÕES ESPECÍFICAS (Cores, Dropdowns) */
-                body.dark-mode table { color: var(--text-primary) !important; }
-                body.dark-mode .table-dark-fix td,
-                body.dark-mode .table-dark-fix th {
-                    background-color: var(--bg-sidebar) !important;
-                    border-bottom-color: var(--border-color) !important;
-                    color: var(--text-primary) !important;
-                }
-                body.dark-mode .hover-effect:hover td { background-color: var(--bg-hover) !important; }
-
-                /* Correção do Dropdown para o Modo Escuro */
                 body.dark-mode .custom-dropdown { 
                     background-color: var(--bg-sidebar); 
                     border: 1px solid var(--border-color) !important; 

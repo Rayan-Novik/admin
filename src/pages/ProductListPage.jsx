@@ -4,22 +4,21 @@ import { AnimatePresence } from 'framer-motion';
 import api from '../services/api';
 import { toast } from 'react-toastify';
 
-// 🟢 1. IMPORTANDO O HOOK DE PERMISSÃO
+// 🟢 HOOK DE PERMISSÃO
 import { usePermission } from '../hooks/usePermission'; 
 
 import StatsCards from '../components/productlistcomponents/StatsCards';
 import ProductFilters from '../components/productlistcomponents/ProductFilters';
-import ProductDesktopTable from '../components/productlistcomponents/ProductDesktopTable';
-import ProductMobileCards from '../components/productlistcomponents/ProductMobileCards';
+// 👇 AQUI ESTAVA O ERRO: Removido as chaves {} 
+import ProductDesktopTable from '../components/productlistcomponents/ProductDesktopTable'; 
 import ProductStockHistoryModal from '../components/productlistcomponents/ProductStockHistoryModal';
 import ProductCompositionModal from '../components/productlistcomponents/ProductCompositionModal';
 import ProductCraftModal from '../components/productlistcomponents/ProductCraftModal';
 
 const ProductListPage = () => {
-    // 🟢 2. INICIANDO O HOOK E VERIFICANDO PERMISSÕES
+    // 🟢 INICIANDO O HOOK E VERIFICANDO PERMISSÕES
     const { can } = usePermission();
     const podeGerenciarProdutos = can('PRODUTOS_MANAGE');
-    const podeGerenciarEstoque = can('ESTOQUE_MANAGE');
 
     const [produtos, setProdutos] = useState([]);
     const [categorias, setCategorias] = useState([]);
@@ -34,8 +33,10 @@ const ProductListPage = () => {
     const [filterType, setFilterType] = useState(''); 
     const [fbConfig, setFbConfig] = useState({});
     const [isMlConfigured, setIsMlConfigured] = useState(false);
+    
+    // Modais
     const [showHistory, setShowHistory] = useState(false);
-    const [showComposition, setShowComposition] = useState(false); 
+    const [showComposition, setShowComposition] = useState(false);             
     const [showCraft, setShowCraft] = useState(false);             
     const [selectedProduct, setSelectedProduct] = useState(null);
 
@@ -46,7 +47,7 @@ const ProductListPage = () => {
         try {
             setLoading(true);
             
-            // 1. Busca APENAS os dados vitais primeiro (Sem o Facebook)
+            // 1. Busca APENAS os dados vitais primeiro
             const [prodRes, catRes, marcaRes] = await Promise.all([
                 api.get('/produtos'), 
                 api.get('/categorias'), 
@@ -57,12 +58,11 @@ const ProductListPage = () => {
             setCategorias(catRes.data); 
             setMarcas(marcaRes.data);
 
-            // 2. Tenta buscar a API do Facebook separadamente (isolado de falhas)
+            // 2. Tenta buscar a API do Facebook separadamente
             try {
                 const fbRes = await api.get('/apikeys/facebook');
                 if (fbRes.data) setFbConfig(fbRes.data);
             } catch (e) {
-                // Se der Erro 403 (Funcionário bloqueado), apenas ignora em silêncio
                 console.log("Sem permissão para Facebook. Ignorando...");
             }
 
@@ -114,7 +114,7 @@ const ProductListPage = () => {
     const handleShowCraft = (product) => { setSelectedProduct(product); setShowCraft(true); };
 
     // ==========================================================
-    // 🟢 3. PROTEGENDO AS FUNÇÕES CRÍTICAS
+    // 🟢 PROTEGENDO AS FUNÇÕES CRÍTICAS
     // ==========================================================
 
     const toggleEcommerceHandler = async (id, currentStatus) => {
@@ -187,30 +187,8 @@ const ProductListPage = () => {
     };
 
     return (
-        <div className="product-page-wrapper">
+        <div style={{ backgroundColor: 'var(--bg-main, #f8fafc)', minHeight: '100vh' }}>
             <Container fluid="lg" className="px-lg-3 px-0 pt-lg-4 pt-3">
-                
-                {/* CABEÇALHO DESKTOP (Invisível no Mobile) */}
-                <div className="d-none d-lg-flex justify-content-between align-items-center mb-4 gap-3 px-3 px-lg-0">
-                    <div>
-                        <h4 className="fw-bold m-0 d-flex align-items-center" style={{ fontSize: '1.25rem', color: 'var(--text-primary)' }}>
-                            <i className="bi bi-box-seam me-3 opacity-75"></i>
-                            Gestão de Produtos
-                        </h4>
-                        <small className="mt-1 d-block" style={{ color: 'var(--text-secondary)' }}>Catálogo completo e integrações.</small>
-                    </div>
-                </div>
-
-                {/* CABEÇALHO MOBILE (Invisível no Desktop) */}
-                <div className="d-block d-lg-none px-3 mb-3">
-                    <div className="d-flex justify-content-between align-items-center mb-3">
-                        <h4 className="fw-bold m-0" style={{ fontSize: '1.3rem', color: 'var(--text-primary)' }}>
-                            <i className="bi bi-box-seam me-2 opacity-75"></i> Produtos
-                        </h4>
-                    </div>
-                </div>
-
-                {/* CONTEÚDO PRINCIPAL */}
                 <div className="px-3 px-lg-0">
                     <StatsCards stats={stats} showMlStats={isMlConfigured} />
                     
@@ -226,38 +204,22 @@ const ProductListPage = () => {
                     <div className="p-0 mt-3">
                         <AnimatePresence mode='wait'>
                             {loading ? (
-                                <div className="d-flex justify-content-center align-items-center py-5" style={{ minHeight: '300px' }}><Spinner animation="border" variant="secondary" /></div>
+                                <div className="d-flex justify-content-center align-items-center py-5" style={{ minHeight: '300px' }}>
+                                    <Spinner animation="border" style={{ color: '#0A84FF' }} />
+                                </div>
                             ) : error ? (
                                 <Alert variant="danger" className="text-center border-0 rounded-4 shadow-sm">{error}</Alert>
-                            ) : filteredProdutos.length === 0 ? (
-                                <div className="text-center py-5" style={{ color: 'var(--text-secondary)' }}>
-                                    <i className="bi bi-inbox display-4 mb-3 opacity-25"></i>
-                                    <p>Nenhum produto encontrado com os filtros atuais.</p>
-                                </div>
                             ) : (
-                                <>
-                                    <div className="d-none d-lg-block">
-                                        <ProductDesktopTable 
-                                            products={filteredProdutos} toggleEcommerce={toggleEcommerceHandler} renderStatusBadge={renderStatusBadge} 
-                                            syncStatus={syncStatusHandler} publishHandler={publishHandler} isFacebookReady={isFacebookReady}
-                                            fbConfig={fbConfig} handlePostOrganico={handlePostOrganico} handleAnuncioPago={handleAnuncioPago} 
-                                            updateStatusHandler={updateStatusHandler} deleteHandler={deleteHandler} defaultImage={defaultImage}
-                                            onShowHistory={handleShowHistory} isMlConfigured={isMlConfigured} onShowComposition={handleShowComposition}
-                                            onShowCraft={handleShowCraft} categoriesList={categorias}
-                                            podeGerenciarProdutos={podeGerenciarProdutos}
-                                        />
-                                    </div>
-                                    <div className="d-lg-none mobile-list-container">
-                                        <ProductMobileCards 
-                                            products={filteredProdutos} toggleEcommerce={toggleEcommerceHandler} renderStatusBadge={renderStatusBadge}
-                                            syncStatus={syncStatusHandler} publishHandler={publishHandler} updateStatusHandler={updateStatusHandler}
-                                            deleteHandler={deleteHandler} isFacebookReady={isFacebookReady} handlePostOrganico={handlePostOrganico}
-                                            defaultImage={defaultImage} onShowHistory={handleShowHistory} isMlConfigured={isMlConfigured}
-                                            onShowComposition={handleShowComposition} onShowCraft={handleShowCraft} categoriesList={categorias}
-                                            podeGerenciarProdutos={podeGerenciarProdutos}
-                                        />
-                                    </div>
-                                </>
+                                /* 👇 AQUI ENTRA A NOSSA LISTA UNIVERSAL 👇 */
+                                <ProductDesktopTable
+                                    products={filteredProdutos} toggleEcommerce={toggleEcommerceHandler} renderStatusBadge={renderStatusBadge} 
+                                    syncStatus={syncStatusHandler} publishHandler={publishHandler} isFacebookReady={isFacebookReady}
+                                    fbConfig={fbConfig} handlePostOrganico={handlePostOrganico} handleAnuncioPago={handleAnuncioPago} 
+                                    updateStatusHandler={updateStatusHandler} deleteHandler={deleteHandler} defaultImage={defaultImage}
+                                    onShowHistory={handleShowHistory} isMlConfigured={isMlConfigured} onShowComposition={handleShowComposition}
+                                    onShowCraft={handleShowCraft} categoriesList={categorias}
+                                    podeGerenciarProdutos={podeGerenciarProdutos}
+                                />
                             )}
                         </AnimatePresence>
                     </div>
@@ -267,32 +229,6 @@ const ProductListPage = () => {
                 <ProductCompositionModal show={showComposition} onHide={() => setShowComposition(false)} product={selectedProduct} allProducts={produtos} />
                 <ProductCraftModal show={showCraft} onHide={() => setShowCraft(false)} product={selectedProduct} onSuccess={() => { setShowCraft(false); fetchData(); }} />
             </Container>
-
-            {/* ====== CSS PADRONIZADOR MOBILE ====== */}
-            <style>{`
-                .product-page-wrapper {
-                    background-color: var(--bg-main, #f8fafc);
-                    min-height: 100vh;
-                    transition: background-color 0.2s ease;
-                }
-
-                @media (max-width: 991px) {
-                    .product-page-wrapper {
-                        background-color: var(--bg-main, #f8fafc) !important;
-                    }
-                    /* Transforma os cards Desktop Brancos em Mobile Cinzas e Arredondados */
-                    .clean-card-mobile {
-                        background-color: #e6e6e6 !important;
-                        border: none !important;
-                        border-radius: 20px !important;
-                        box-shadow: none !important;
-                    }
-                    .mobile-list-container {
-                        background-color: transparent !important;
-                        padding-top: 10px;
-                    }
-                }
-            `}</style>
         </div>
     );
 };

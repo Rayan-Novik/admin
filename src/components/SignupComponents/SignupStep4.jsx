@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Form, Button, Spinner, Row, Col, InputGroup } from 'react-bootstrap';
+import { Form, Button, Spinner, Row, Col } from 'react-bootstrap';
 import axios from 'axios';
+// Importando nossos componentes universais
+import { CustomInput } from '../ui/SearchInput/SearchInput';
+import { CtaButton, LightButton } from '../ui/buttons/CtaButton';
 
 export const SignupStep4 = ({ formData, setFormData, handlePrevStep, submitHandler, loading }) => {
   const [loadingCep, setLoadingCep] = useState(false);
@@ -11,21 +14,16 @@ export const SignupStep4 = ({ formData, setFormData, handlePrevStep, submitHandl
   ];
 
   const palette = { ink: '#0F172A', sub: '#64748B', line: '#E5EAF1' };
-  const inputStyle = { background: '#F4F6FA', border: `1px solid ${palette.line}`, borderRadius: 12, height: 42, fontSize: 14, color: palette.ink, boxShadow: 'none' };
   const labelStyle = { fontSize: 12, fontWeight: 600, color: palette.sub, marginBottom: 4 };
 
-  // Efeitos de foco para inputs normais
-  const focusProps = {
-    onFocus: (e) => { e.currentTarget.style.borderColor = formData.primaryColor; e.currentTarget.style.background = '#fff'; e.currentTarget.style.boxShadow = `0 0 0 3px ${formData.primaryColor}20`; },
-    onBlur: (e) => { e.currentTarget.style.borderColor = palette.line; e.currentTarget.style.background = '#F4F6FA'; e.currentTarget.style.boxShadow = 'none'; }
-  };
-
+  // Garante que o gateway seja mantido como OFFLINE neste momento
   useEffect(() => {
     if (formData.gatewayProvider !== 'OFFLINE') {
       setFormData(prev => ({ ...prev, gatewayProvider: 'OFFLINE' }));
     }
   }, [formData.gatewayProvider, setFormData]);
 
+  // Busca do CEP automática
   const handleCepBlur = async () => {
     const cep = formData.cep.replace(/\D/g, '');
     if (cep.length === 8) {
@@ -49,6 +47,7 @@ export const SignupStep4 = ({ formData, setFormData, handlePrevStep, submitHandl
     }
   };
 
+  // Botões de dias da semana
   const toggleDia = (id) => {
     setFormData(prev => {
       const dias = prev.diasFuncionamento.includes(id)
@@ -75,39 +74,71 @@ export const SignupStep4 = ({ formData, setFormData, handlePrevStep, submitHandl
             <Form.Group>
               <Form.Label style={labelStyle}>CEP</Form.Label>
               <div className="position-relative">
-                <Form.Control type="text" required value={formData.cep} onChange={e => setFormData({ ...formData, cep: e.target.value })} onBlur={handleCepBlur} style={inputStyle} {...focusProps} />
-                {loadingCep && <Spinner size="sm" className="position-absolute" style={{ right: 10, top: 12, color: formData.primaryColor }} />}
+                <CustomInput 
+                  required 
+                  value={formData.cep || ''} 
+                  onChange={e => setFormData({ ...formData, cep: e.target.value })} 
+                  onBlur={handleCepBlur} 
+                  placeholder="00000-000"
+                />
+                {loadingCep && <Spinner size="sm" className="position-absolute" style={{ right: 15, top: 15, color: formData.primaryColor, zIndex: 10 }} />}
               </div>
             </Form.Group>
           </Col>
           <Col md={8}>
             <Form.Group>
               <Form.Label style={labelStyle}>Logradouro</Form.Label>
-              <Form.Control type="text" required value={formData.logradouro} onChange={e => setFormData({ ...formData, logradouro: e.target.value })} style={inputStyle} {...focusProps} />
+              <CustomInput 
+                required 
+                value={formData.logradouro || ''} 
+                onChange={e => setFormData({ ...formData, logradouro: e.target.value })} 
+                placeholder="Rua, Avenida, etc."
+              />
             </Form.Group>
           </Col>
           <Col md={4}>
             <Form.Group>
               <Form.Label style={labelStyle}>Número</Form.Label>
-              <Form.Control type="text" required value={formData.numero} onChange={e => setFormData({ ...formData, numero: e.target.value })} style={inputStyle} {...focusProps} />
+              <CustomInput 
+                required 
+                value={formData.numero || ''} 
+                onChange={e => setFormData({ ...formData, numero: e.target.value })} 
+                placeholder="Ex: 123"
+              />
             </Form.Group>
           </Col>
           <Col md={8}>
             <Form.Group>
               <Form.Label style={labelStyle}>Bairro</Form.Label>
-              <Form.Control type="text" required value={formData.bairro} onChange={e => setFormData({ ...formData, bairro: e.target.value })} style={inputStyle} {...focusProps} />
+              <CustomInput 
+                required 
+                value={formData.bairro || ''} 
+                onChange={e => setFormData({ ...formData, bairro: e.target.value })} 
+                placeholder="Seu Bairro"
+              />
             </Form.Group>
           </Col>
           <Col md={8}>
             <Form.Group>
               <Form.Label style={labelStyle}>Cidade</Form.Label>
-              <Form.Control type="text" required value={formData.cidade} onChange={e => setFormData({ ...formData, cidade: e.target.value })} style={inputStyle} {...focusProps} />
+              <CustomInput 
+                required 
+                value={formData.cidade || ''} 
+                onChange={e => setFormData({ ...formData, cidade: e.target.value })} 
+                placeholder="Sua Cidade"
+              />
             </Form.Group>
           </Col>
           <Col md={4}>
             <Form.Group>
               <Form.Label style={labelStyle}>UF</Form.Label>
-              <Form.Control type="text" maxLength="2" required value={formData.estado} onChange={e => setFormData({ ...formData, estado: e.target.value })} style={inputStyle} {...focusProps} />
+              <CustomInput 
+                required 
+                maxLength="2" 
+                value={formData.estado || ''} 
+                onChange={e => setFormData({ ...formData, estado: e.target.value.toUpperCase() })} 
+                placeholder="Ex: SP"
+              />
             </Form.Group>
           </Col>
         </Row>
@@ -122,13 +153,21 @@ export const SignupStep4 = ({ formData, setFormData, handlePrevStep, submitHandl
           <Col xs={6}>
             <Form.Group>
               <Form.Label style={labelStyle}>Abre às (Opcional)</Form.Label>
-              <Form.Control type="time" value={formData.horaAbertura} onChange={e => setFormData({ ...formData, horaAbertura: e.target.value })} style={inputStyle} {...focusProps} />
+              <CustomInput 
+                type="time" 
+                value={formData.horaAbertura || ''} 
+                onChange={e => setFormData({ ...formData, horaAbertura: e.target.value })} 
+              />
             </Form.Group>
           </Col>
           <Col xs={6}>
             <Form.Group>
               <Form.Label style={labelStyle}>Fecha às (Opcional)</Form.Label>
-              <Form.Control type="time" value={formData.horaFechamento} onChange={e => setFormData({ ...formData, horaFechamento: e.target.value })} style={inputStyle} {...focusProps} />
+              <CustomInput 
+                type="time" 
+                value={formData.horaFechamento || ''} 
+                onChange={e => setFormData({ ...formData, horaFechamento: e.target.value })} 
+              />
             </Form.Group>
           </Col>
         </Row>
@@ -144,9 +183,11 @@ export const SignupStep4 = ({ formData, setFormData, handlePrevStep, submitHandl
                   variant="none"
                   className="rounded-3 px-3 py-1 fw-medium"
                   style={{ 
-                    fontSize: '13px', border: `1px solid ${isSelected ? formData.primaryColor : palette.line}`,
+                    fontSize: '13px', 
+                    border: `1px solid ${isSelected ? formData.primaryColor : palette.line}`,
                     backgroundColor: isSelected ? formData.primaryColor : '#F4F6FA',
-                    color: isSelected ? '#fff' : palette.sub, transition: 'all 0.2s'
+                    color: isSelected ? '#fff' : palette.sub, 
+                    transition: 'all 0.2s'
                   }}
                   onClick={() => toggleDia(dia.id)}
                 >
@@ -168,18 +209,24 @@ export const SignupStep4 = ({ formData, setFormData, handlePrevStep, submitHandl
         </div>
       </div>
 
+      {/* --- BOTÕES FINAIS --- */}
       <div className="d-flex gap-3 mt-4 pt-3 border-top" style={{ borderColor: palette.line }}>
-        <Button variant="light" onClick={handlePrevStep} className="rounded-4 fw-bold px-4 border-0" style={{ backgroundColor: '#F4F6FA', color: palette.sub, height: '50px' }}>
+        <LightButton onClick={handlePrevStep} className="px-4">
           <i className="bi bi-arrow-left"></i>
-        </Button>
-        <Button 
+        </LightButton>
+        
+        <CtaButton 
           type="submit" 
           disabled={loading} 
-          className="flex-grow-1 rounded-4 fw-bold text-white border-0 shadow-sm d-flex justify-content-center align-items-center gap-2"
-          style={{ backgroundColor: formData.primaryColor, height: '50px', boxShadow: `0 10px 24px -8px ${formData.primaryColor}80` }}
+          color={formData.primaryColor}
+          className="flex-grow-1 d-flex justify-content-center align-items-center gap-2"
         >
-          {loading ? <Spinner as="span" animation="border" size="sm" /> : <>Finalizar e Criar Loja <i className="bi bi-rocket-takeoff-fill"></i></>}
-        </Button>
+          {loading ? (
+            <Spinner as="span" animation="border" size="sm" />
+          ) : (
+            <>Finalizar e Criar Loja <i className="bi bi-rocket-takeoff-fill"></i></>
+          )}
+        </CtaButton>
       </div>
     </Form>
   );

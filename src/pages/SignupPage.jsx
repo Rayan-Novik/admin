@@ -205,19 +205,16 @@ const SignupPage = () => {
 
             {/* Brand Header */}
             <div className="text-center mb-4">
-              <div className="d-inline-flex align-items-center gap-2 mb-3">
+              <div className="d-inline-flex justify-content-center mb-3 w-100">
                 <img
-                  src="/logologin.png"
+                  src="/logologin2.png"
                   alt="ArarinhaCloud"
                   style={{
-                    width: 48,
-                    height: 48,
+                    width: 220, // Ajustado para dar destaque
+                    height: 'auto', // Permite que a altura se ajuste na proporção correta
                     objectFit: 'contain',
                   }}
                 />
-                <span style={styles.brandText}>
-                  ararinha<span style={{ color: palette.brand }}>cloud</span>
-                </span>
               </div>
             </div>
 

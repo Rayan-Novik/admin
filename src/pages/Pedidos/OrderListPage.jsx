@@ -4,6 +4,8 @@ import { AnimatePresence, motion } from 'framer-motion';
 import api from '../../services/api';
 import { toast } from 'react-toastify';
 import { Calendar } from 'lucide-react';
+import { CtaButton } from '../../components/ui/buttons/CtaButton'
+import { SquareButton } from '../../components/ui/buttons/SquareButton'
 
 // 🟢 Importa os componentes
 import { OrderListContent } from '../../components/orders/OrderListContent'; 
@@ -390,18 +392,15 @@ const OrderListPage = () => {
                             <span className="text-success fw-bold fs-5">{formatCurrency(stats.valorTotal)}</span>
                         </div>
 
-                        <Button 
-                            variant="outline-primary" 
-                            className="rounded-3 d-flex align-items-center px-3 fw-bold border-0" 
-                            style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5' }}
+                        <CtaButton
                             onClick={() => setShowAgenda(true)}
                         >
                             <Calendar size={18} className="me-2" /> Ver Agenda
-                        </Button>
+                        </CtaButton>
 
-                        <Button variant="dark" onClick={fetchPedidos} disabled={loading} className="rounded-3 d-flex align-items-center px-4 border-0" style={{ backgroundColor: 'var(--text-primary)', color: 'var(--bg-sidebar)' }}>
+                        <CtaButton onClick={fetchPedidos}>
                             {loading ? <Spinner size="sm" className="me-2"/> : <i className="bi bi-arrow-clockwise me-2"></i>} Atualizar
-                        </Button>
+                        </CtaButton>
                     </div>
                 </div>
 
@@ -419,23 +418,13 @@ const OrderListPage = () => {
                     </div>
                     
                     <div className="d-flex gap-2 mb-3">
-                        <Button 
-                            variant="outline-primary" 
-                            className="flex-fill rounded-4 fw-bold border-0 d-flex justify-content-center align-items-center"
-                            style={{ backgroundColor: 'rgba(99, 102, 241, 0.1)', color: '#4f46e5', padding: '12px' }}
+                        <SquareButton
                             onClick={() => setShowAgenda(true)}
                         >
-                            <Calendar size={18} className="me-2" /> Agenda
-                        </Button>
-                        <Button 
-                            variant="dark" 
-                            onClick={fetchPedidos} 
-                            disabled={loading} 
-                            className="rounded-4 border-0 px-4 d-flex justify-content-center align-items-center"
-                            style={{ backgroundColor: 'var(--text-primary)' }}
-                        >
+                            <Calendar size={18}/></SquareButton>
+                        <SquareButton onClick={fetchPedidos}>
                             {loading ? <Spinner size="sm" /> : <i className="bi bi-arrow-clockwise fs-5"></i>}
-                        </Button>
+                        </SquareButton>
                     </div>
                 </div>
 
