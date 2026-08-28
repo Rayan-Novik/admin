@@ -22,7 +22,7 @@ const LoginPage = ({ onLogin }) => {
   // pois o CustomInput agora gerencia o olhinho da senha sozinho!
 
   const navigate = useNavigate();
-  const APP_VERSION = '20260619.1';
+  const APP_VERSION = '20260827.1';
 
   useEffect(() => {
     localStorage.removeItem('adminInfo');
@@ -271,7 +271,7 @@ const LoginPage = ({ onLogin }) => {
 
             <div className="text-center mt-3">
               <small style={{ color: palette.sub }}>
-                © {new Date().getFullYear()} ararinhacloud · Tecnologia que voa com você
+                © {new Date().getFullYear()} azun.com.br · Tecnologia que voa com você
               </small>
             </div>
           </Col>

@@ -19,11 +19,12 @@ const DesktopMenu = ({
 }) => {
     const location = useLocation();
 
-    // Componente interno para os Itens do Menu Desktop
+    // 🟢 Componente Interno Limpo para os Itens de Navegação
     const NavItem = ({ to, icon, text }) => {
         const isActive = to === '/' ? location.pathname === '/' : location.pathname.startsWith(to);
         const isWhatsappItem = to === '/admin/chat'; 
         const isOrdersItem = to === '/orders'; 
+        const notifCount = isWhatsappItem ? totalUnreadWhatsapp : (isOrdersItem ? totalNewOrders : 0);
 
         const content = (
             <LinkContainer to={to}>
@@ -66,6 +67,7 @@ const DesktopMenu = ({
 
     return (
         <>
+            {/* 🟢 LÓGICA DO MODO ESCURO DE VOLTA - NENHUMA ALTERAÇÃO NO SEU HTML */}
             <style>{`
                 :root {
                     --bg-sidebar: #ffffff;
@@ -183,61 +185,86 @@ const DesktopMenu = ({
                 .saas-tooltip .tooltip-arrow::before { border-right-color: var(--bg-tooltip) !important; }
             `}</style>
 
-            <div className={`d-none d-lg-flex flex-column vh-100 position-sticky top-0 sidebar-lite ${isCollapsed ? 'collapsed' : ''}`}>
+            <div 
+                className="d-none d-lg-flex flex-column vh-100 position-sticky top-0 flex-shrink-0" 
+                style={{ 
+                    width: isCollapsed ? '88px' : '260px', 
+                    transition: 'width 0.3s cubic-bezier(0.4, 0, 0.2, 1)', 
+                    backgroundColor: 'var(--bg-sidebar, #ffffff)', 
+                    borderRight: '1px solid var(--border-color, #e2e8f0)',
+                    zIndex: 1000 
+                }}
+            >
                 
-                <div className={`sidebar-brand ${isCollapsed ? 'justify-content-center' : 'px-4'}`}>
-                    <img src="/logologin.svg" alt="Logo" style={{ width: '28px', height: '28px', filter: isDarkMode ? 'brightness(0) invert(1)' : 'none' }} className={isCollapsed ? '' : 'me-3'} />
-                    {!isCollapsed && (
-                        <div>
-                            <div className="brand-title">Ararinha</div>
-                            <div className="brand-sub">Cloud</div>
-                        </div>
-                    )}
+                {/* 🟢 BRAND / LOGO (Centralizado e Fonte Personalizada) */}
+                <div 
+                    className="d-flex align-items-center justify-content-center w-100" 
+                    style={{ height: '76px', borderBottom: '1px solid var(--border-color, #e2e8f0)' }}
+                >
+                    <img 
+                        src="/logologin.png" 
+                        alt="Logo" 
+                        style={{ width: '48px', height: '48px',}} 
+                        className={isCollapsed ? '' : 'me-2'} 
+                    />
                 </div>
 
-                <div className="flex-grow-1 overflow-auto no-scroll py-2">
+                {/* 🟢 LISTA DE MENUS (Scroll Invisível) */}
+                <div 
+                    className="flex-grow-1 py-3 overflow-auto" 
+                    style={{ msOverflowStyle: 'none', scrollbarWidth: 'none' }}
+                >
                     {filteredMenuGroups.map((group) => {
                         const hasActiveChild = group.items.some(item => location.pathname.startsWith(item.to));
-
+                        
                         let groupNotifCount = 0;
                         if (group.id === 'atendimento') groupNotifCount = totalUnreadWhatsapp;
                         if (group.id === 'ecommerce') groupNotifCount = totalNewOrders;
 
                         return (
-                            <div key={group.id} className="mb-1">
+                            <div key={group.id} className="mb-2 px-3">
                                 {group.items.length === 1 ? (
                                     <NavItem {...group.items[0]} />
                                 ) : (
                                     <>
+                                        {/* Menu Pai Expansível */}
                                         {isCollapsed ? (
-                                            <div className="saas-group-header collapsed-item justify-content-center text-muted opacity-50 position-relative" title={group.title}>
-                                                <i className={`${group.icon} saas-icon m-0 position-relative`}>
+                                            <OverlayTrigger placement="right" overlay={<Tooltip className="saas-tooltip border-0">{group.title}</Tooltip>}>
+                                                <div className="d-flex justify-content-center align-items-center py-2 mb-1 text-secondary position-relative" style={{ cursor: 'pointer', opacity: 0.6 }}>
+                                                    <i className={`${group.icon} fs-5`}></i>
                                                     {groupNotifCount > 0 && (
-                                                        <span className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-light rounded-circle" style={{ width: '8px', height: '8px' }}></span>
+                                                        <span className="position-absolute top-0 start-100 translate-middle p-1 bg-danger border border-white rounded-circle shadow-sm" style={{ width: '10px', height: '10px' }}></span>
                                                     )}
-                                                </i>
-                                            </div>
+                                                </div>
+                                            </OverlayTrigger>
                                         ) : (
-                                            <>
-                                                <div className={`saas-group-header ${hasActiveChild ? 'active-group' : ''}`} onClick={() => toggleMenu(group.id)}>
-                                                    <div className="d-flex align-items-center">
-                                                        <i className={`${group.icon} saas-icon ${hasActiveChild ? 'text-primary' : ''}`}></i>
-                                                        <span>{group.title}</span>
-                                                    </div>
-                                                    <div className="d-flex align-items-center">
-                                                        {groupNotifCount > 0 && !openMenus[group.id] && (
-                                                            <Badge bg="danger" pill className="shadow-sm me-2" style={{ fontSize: '0.65rem' }}>
-                                                                {groupNotifCount}
-                                                            </Badge>
-                                                        )}
-                                                        <i className={`bi bi-chevron-down chevron-icon ${openMenus[group.id] ? 'open' : ''}`}></i>
-                                                    </div>
+                                            <div 
+                                                className={`d-flex align-items-center justify-content-between py-2 px-3 mb-1 rounded-3 ${hasActiveChild ? 'text-primary fw-bold' : 'text-secondary fw-semibold'}`}
+                                                style={{ fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.5px', cursor: 'pointer', transition: 'background-color 0.2s' }}
+                                                onClick={() => toggleMenu(group.id)}
+                                                onMouseOver={(e) => { e.currentTarget.style.backgroundColor = 'var(--bg-hover, #f8fafc)'; e.currentTarget.style.color = 'var(--text-primary, #0f172a)'; }}
+                                                onMouseOut={(e) => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = hasActiveChild ? 'var(--text-primary)' : 'var(--text-secondary)'; }}
+                                            >
+                                                <div className="d-flex align-items-center">
+                                                    <i className={`${group.icon} fs-5 me-2 ${hasActiveChild ? 'text-primary' : ''}`}></i>
+                                                    <span>{group.title}</span>
                                                 </div>
-                                                <div className={`submenu-lite ${openMenus[group.id] ? 'open' : ''}`}>
-                                                    {group.items.map(item => <NavItem key={item.to} {...item} />)}
+                                                <div className="d-flex align-items-center">
+                                                    {groupNotifCount > 0 && !openMenus[group.id] && (
+                                                        <span className="bg-danger text-white rounded-pill me-2 d-flex align-items-center justify-content-center shadow-sm fw-bold" style={{ fontSize: '10px', padding: '2px 6px' }}>{groupNotifCount}</span>
+                                                    )}
+                                                    <i className="bi bi-chevron-down" style={{ fontSize: '12px', transition: 'transform 0.2s', transform: openMenus[group.id] ? 'rotate(180deg)' : 'none' }}></i>
                                                 </div>
-                                            </>
+                                            </div>
                                         )}
+
+                                        {/* Filhos (Submenus) */}
+                                        <div 
+                                            className={`ms-3 ps-2 border-start border-2 ${openMenus[group.id] && !isCollapsed ? 'd-block' : 'd-none'}`} 
+                                            style={{ borderColor: 'var(--border-color, #e2e8f0)' }}
+                                        >
+                                            {group.items.map(item => <NavItem key={item.to} {...item} />)}
+                                        </div>
                                     </>
                                 )}
                             </div>
@@ -245,29 +272,60 @@ const DesktopMenu = ({
                     })}
                 </div>
 
-                <div className="sidebar-footer">
+                {/* 🟢 RODAPÉ DE AÇÕES */}
+                <div className="mt-auto p-3 d-flex flex-column gap-2 border-top" style={{ borderColor: 'var(--border-color, #e2e8f0)', backgroundColor: 'var(--bg-sidebar, #ffffff)' }}>
+                    
                     {!hasNotificationPermission && (
-                        <button className={`btn-sidebar-action d-flex align-items-center text-success ${isCollapsed ? 'justify-content-center' : 'px-3'}`} onClick={requestNotificationPermissionManually} title="Ativar Alertas">
-                            <i className="bi bi-bell-fill" style={{ fontSize: '16px' }}></i>
-                            {!isCollapsed && <span className="ms-2 fw-bold" style={{ fontSize: '12px' }}>Ativar Alertas</span>}
+                        <button 
+                            className={`btn d-flex align-items-center text-success border-0 rounded-3 ${isCollapsed ? 'justify-content-center p-2' : 'px-3 py-2'}`}
+                            style={{ backgroundColor: 'rgba(16, 185, 129, 0.1)', transition: 'transform 0.2s' }}
+                            onClick={requestNotificationPermissionManually}
+                            title="Ativar Alertas"
+                            onMouseOver={(e) => e.currentTarget.style.transform = 'scale(1.02)'}
+                            onMouseOut={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                            <i className="bi bi-bell-fill fs-5"></i>
+                            {!isCollapsed && <span className="ms-3 fw-bold" style={{ fontSize: '13px' }}>Ativar Alertas</span>}
                         </button>
                     )}
 
-                    <button className={`btn-sidebar-action d-flex align-items-center ${isCollapsed ? 'justify-content-center' : 'px-3'}`} onClick={toggleTheme} title={isDarkMode ? "Modo Claro" : "Modo Escuro"}>
-                        <i className={`bi ${isDarkMode ? 'bi-sun-fill text-warning' : 'bi-moon-stars-fill'}`} style={{ fontSize: '16px' }}></i>
-                        {!isCollapsed && <span className="ms-2 fw-medium" style={{ fontSize: '13px' }}>{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span>}
-                    </button>
-                    
-                    <button className={`btn-sidebar-action d-flex align-items-center ${isCollapsed ? 'justify-content-center' : 'px-3'}`} onClick={() => setIsCollapsed(!isCollapsed)} title={isCollapsed ? "Expandir" : "Recolher"}>
-                        <i className={`bi bi-chevron-double-${isCollapsed ? 'right' : 'left'}`} style={{ fontSize: '16px' }}></i>
-                        {!isCollapsed && <span className="ms-2 fw-medium" style={{ fontSize: '13px' }}>Recolher Menu</span>}
+                    <button 
+                        className={`btn d-flex align-items-center text-secondary border-0 rounded-3 ${isCollapsed ? 'justify-content-center p-2' : 'px-3 py-2'}`}
+                        style={{ backgroundColor: 'var(--bg-main, #f8fafc)', transition: 'background-color 0.2s' }}
+                        onClick={toggleTheme}
+                        title={isDarkMode ? "Modo Claro" : "Modo Escuro"}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--border-color, #e2e8f0)'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main, #f8fafc)'}
+                    >
+                        <i className={`bi ${isDarkMode ? 'bi-sun-fill text-warning' : 'bi-moon-stars-fill'} fs-5`}></i>
+                        {!isCollapsed && <span className="ms-3 fw-semibold" style={{ fontSize: '13px', color: 'var(--text-primary)' }}>{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span>}
                     </button>
 
-                    <button className={`btn-logout d-flex align-items-center ${isCollapsed ? 'justify-content-center' : ''}`} onClick={onLogout} title="Sair">
-                        <i className="bi bi-box-arrow-right" style={{ fontSize: '16px' }}></i>
-                        {!isCollapsed && <span className="ms-2">Sair da Conta</span>}
+                    <button 
+                        className={`btn d-flex align-items-center text-secondary border-0 rounded-3 ${isCollapsed ? 'justify-content-center p-2' : 'px-3 py-2'}`}
+                        style={{ backgroundColor: 'var(--bg-main, #f8fafc)', transition: 'background-color 0.2s' }}
+                        onClick={() => setIsCollapsed(!isCollapsed)}
+                        title={isCollapsed ? "Expandir" : "Recolher"}
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'var(--border-color, #e2e8f0)'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'var(--bg-main, #f8fafc)'}
+                    >
+                        <i className={`bi bi-chevron-double-${isCollapsed ? 'right' : 'left'} fs-5`}></i>
+                        {!isCollapsed && <span className="ms-3 fw-semibold" style={{ fontSize: '13px', color: 'var(--text-primary)' }}>Recolher Menu</span>}
+                    </button>
+
+                    <button 
+                        className={`btn d-flex align-items-center text-danger border-0 rounded-3 mt-1 ${isCollapsed ? 'justify-content-center p-2' : 'px-3 py-2'}`}
+                        style={{ backgroundColor: 'rgba(239, 68, 68, 0.05)', transition: 'background-color 0.2s' }}
+                        onClick={onLogout}
+                        title="Sair"
+                        onMouseOver={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.1)'}
+                        onMouseOut={(e) => e.currentTarget.style.backgroundColor = 'rgba(239, 68, 68, 0.05)'}
+                    >
+                        <i className="bi bi-box-arrow-right fs-5"></i>
+                        {!isCollapsed && <span className="ms-3 fw-bold" style={{ fontSize: '13px' }}>Sair da Conta</span>}
                     </button>
                 </div>
+                
             </div>
         </>
     );
