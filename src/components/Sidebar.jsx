@@ -92,6 +92,7 @@ const MENU_GROUPS_CONFIG = [
         icon: "bi bi-chat-dots",
         id: "atendimento",
         items: [
+            { to: "/admin/kanban", icon: "bi bi-kanban", text: "Kanban / CRM", permission: "PEDIDOS_VIEW" },
             { to: "/admin/chat", icon: "bi bi-whatsapp", text: "Chat / WhatsApp", permission: "WHATSAPP_VIEW" },
             { to: "/admin/respostas-rapidas", icon: "bi bi-lightning-charge", text: "Respostas Rápidas", permission: "WHATSAPP_VIEW" },
         ]

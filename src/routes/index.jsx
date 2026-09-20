@@ -64,6 +64,7 @@ import React from 'react';
     import IfoodDashboard from '../pages/admin/IfoodDashboard';
     import ImpressorasPanel from '../pages/configs/ImpressorasPanel';
     import PerfilLoja from '../pages/configs/PerfilLoja';
+    import KanbanPage from '../pages/KanbanPage';
     import MPCallback from '../pages/MPCallback';
 
     // ============================================================================
@@ -238,7 +239,7 @@ import React from 'react';
                                 <Route path="/admin/public-api" element={<PrivateRoute requiredPermission="CONFIG_INTEGRATIONS"><IntegrationApiPage /></PrivateRoute>} />
                                 <Route path="/admin/chat" element={<PrivateRoute requiredPermission="WHATSAPP_VIEW"><WhatsAppChatPage /></PrivateRoute>} />
                                 <Route path="/admin/respostas-rapidas" element={<PrivateRoute requiredPermission="WHATSAPP_VIEW"><RespostasRapidasPage /></PrivateRoute>} />
-
+                                <Route path="/admin/kanban" element={<PrivateRoute requiredPermission="KANBAN_VIEW"><KanbanPage /></PrivateRoute>} />
                                 <Route path="/admin/ifood" element={<PrivateRoute requiredPermission="IFOOD_VIEW"><IfoodDashboard /></PrivateRoute>} />
 
                                 <Route path="/admin/mesas" element={<PrivateRoute requiredPermission="CONFIG_UNIDADES"><GerenciarMesas /></PrivateRoute>} />

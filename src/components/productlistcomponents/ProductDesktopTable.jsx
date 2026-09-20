@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useMemo, useEffect } from 'react'; // 🟢 Importamos useState, useMemo e useEffect
 import { Image, Form, OverlayTrigger, Tooltip, Badge, Dropdown } from 'react-bootstrap';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -18,7 +18,7 @@ const formatStock = (val, unit) => {
 };
 
 const getTypeBadge = (type) => {
-    const config = {
+    const config = {    
         'INSUMO': { bg: 'warning', text: 'Insumo', color: '#b45309' },
         'FINAL': { bg: 'success', text: 'Venda', color: '#15803d' },
         'MISTO': { bg: 'primary', text: 'Misto', color: '#1d4ed8' },
@@ -64,6 +64,31 @@ const ProductDesktopTable = ({
     const podeVer = isDono || permissoesUsuario.includes('PRODUTOS_VIEW') || podeEditar;
     // ==============================================================
 
+    // ==============================================================
+    // 🟢 PAGINAÇÃO: ESTADOS E LÓGICA
+    // ==============================================================
+    const [currentPage, setCurrentPage] = useState(1);
+    const [itemsPerPage, setItemsPerPage] = useState(10); // Exibe 10 por padrão, deixa a lista muito mais leve
+
+    // Retorna para a página 1 se a lista de produtos mudar (ex: ao fazer uma busca)
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [products.length]);
+
+    // Fatiar os produtos baseados na página atual usando useMemo para performance
+    const currentItems = useMemo(() => {
+        const indexOfLastItem = currentPage * itemsPerPage;
+        const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+        return products.slice(indexOfFirstItem, indexOfLastItem);
+    }, [currentPage, itemsPerPage, products]);
+
+    const totalPages = Math.ceil(products.length / itemsPerPage);
+
+    // Funções de navegação
+    const goToNextPage = () => setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+    const goToPrevPage = () => setCurrentPage((prev) => Math.max(prev - 1, 1));
+    // ==============================================================
+
     return (
         <div className="mb-4">
             <FlatListContainer 
@@ -80,8 +105,8 @@ const ProductDesktopTable = ({
                     <div className="col-lg-2 text-end pe-2">Gerenciar</div>
                 </FlatListHeader>
 
-                {/* 🟢 LISTAGEM DOS PRODUTOS */}
-                {products.map(p => {
+                {/* 🟢 LISTAGEM DOS PRODUTOS (Agora usando 'currentItems' em vez de 'products') */}
+                {currentItems.map(p => {
                     const categoryName = p.categorias?.nome || 
                                          categoriesList.find(c => c.id_categoria == p.id_categoria)?.nome || 
                                          'Sem Categoria';
@@ -179,7 +204,6 @@ const ProductDesktopTable = ({
                                     {/* COLUNA 4: AÇÕES */}
                                     <div className="col-12 col-lg-2 d-flex justify-content-end align-items-center gap-2 mt-3 mt-lg-0 p-0">
                                         
-                                        {/* Ação Principal: EDITAR ou VISUALIZAR usando SquareButton */}
                                         {podeEditar ? (
                                             <OverlayTrigger placement="top" overlay={<Tooltip>Editar Produto</Tooltip>}>
                                                 <SquareButton 
@@ -202,7 +226,6 @@ const ProductDesktopTable = ({
                                             </OverlayTrigger>
                                         ) : null}
 
-                                        {/* Dropdown de Opções Extras */}
                                         {podeEditar && (
                                             <Dropdown align="end">
                                                 <Dropdown.Toggle 
@@ -215,7 +238,6 @@ const ProductDesktopTable = ({
                                                 <Dropdown.Menu className="shadow-lg border-0 rounded-4 p-2 custom-dropdown" style={{ minWidth: '220px' }}>
                                                     <div className="small fw-bold px-3 py-1 text-uppercase" style={{ color: 'var(--text-secondary)', fontSize: '10px', letterSpacing: '0.5px' }}>Produção</div>
                                                     
-                                                    {/* Fabricação */}
                                                     {p.tipo_produto !== 'INSUMO' && (
                                                         <Dropdown.Item onClick={() => onShowCraft(p)} className="rounded-3 py-2 d-flex align-items-center">
                                                             <i className="bi bi-hammer me-2" style={{ color: '#0A84FF' }}></i> <span className="fw-medium" style={{ fontSize: '13px' }}>Fabricar Item</span>
@@ -231,7 +253,6 @@ const ProductDesktopTable = ({
                                                     <div className="dropdown-divider my-2" style={{ borderColor: 'var(--border-color)' }}></div>
                                                     <div className="small fw-bold px-3 py-1 text-uppercase" style={{ color: 'var(--text-secondary)', fontSize: '10px', letterSpacing: '0.5px' }}>Marketing</div>
 
-                                                    {/* Mercado Livre Actions */}
                                                     {p.mercado_livre_id ? (
                                                         <>
                                                             <Dropdown.Item onClick={() => updateStatusHandler(p.id_produto, p.ml_status)} className="rounded-3 py-2 d-flex align-items-center">
@@ -248,7 +269,6 @@ const ProductDesktopTable = ({
                                                         </Dropdown.Item>
                                                     )}
 
-                                                    {/* Facebook Actions */}
                                                     {isFacebookReady && (
                                                         <>
                                                             <Dropdown.Item onClick={() => handlePostOrganico(p.id_produto)} className="rounded-3 py-2 d-flex align-items-center">
@@ -277,6 +297,63 @@ const ProductDesktopTable = ({
                 })}
             </FlatListContainer>
             
+            {/* 🟢 PAGINAÇÃO: UI RENDERIZADA AO FINAL DA LISTA */}
+            {products.length > 0 && (
+                <div className="d-flex flex-wrap justify-content-between align-items-center mt-3 p-3 bg-white rounded-3 shadow-sm border" style={{ borderColor: 'var(--border-color)', backgroundColor: 'var(--bg-sidebar)' }}>
+                    
+                    <div className="d-flex align-items-center gap-3 mb-2 mb-sm-0">
+                        <span className="text-muted small fw-medium">
+                            Mostrando {(currentPage - 1) * itemsPerPage + 1} a {Math.min(currentPage * itemsPerPage, products.length)} de {products.length} itens
+                        </span>
+                        
+                        {/* Opcional: Seletor de itens por página */}
+                        <div className="d-none d-md-flex align-items-center gap-2">
+                            <span className="small text-muted">Por página:</span>
+                            <Form.Select 
+                                size="sm" 
+                                value={itemsPerPage} 
+                                onChange={(e) => {
+                                    setItemsPerPage(Number(e.target.value));
+                                    setCurrentPage(1);
+                                }}
+                                style={{ width: '70px', backgroundColor: 'var(--bg-body)', color: 'var(--text-primary)', borderColor: 'var(--border-color)' }}
+                            >
+                                <option value={10}>10</option>
+                                <option value={20}>20</option>
+                                <option value={50}>50</option>
+                            </Form.Select>
+                        </div>
+                    </div>
+
+                    {/* Botões de Navegação */}
+                    {totalPages > 1 && (
+                        <div className="d-flex align-items-center gap-2">
+                            <button 
+                                onClick={goToPrevPage} 
+                                disabled={currentPage === 1}
+                                className="btn btn-sm btn-light border d-flex align-items-center gap-1 shadow-sm"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                <i className="bi bi-chevron-left"></i> <span className="d-none d-sm-inline">Anterior</span>
+                            </button>
+
+                            <span className="px-2 small fw-bold" style={{ color: 'var(--text-secondary)' }}>
+                                Página {currentPage} de {totalPages}
+                            </span>
+
+                            <button 
+                                onClick={goToNextPage} 
+                                disabled={currentPage === totalPages}
+                                className="btn btn-sm btn-light border d-flex align-items-center gap-1 shadow-sm"
+                                style={{ color: 'var(--text-primary)' }}
+                            >
+                                <span className="d-none d-sm-inline">Próxima</span> <i className="bi bi-chevron-right"></i>
+                            </button>
+                        </div>
+                    )}
+                </div>
+            )}
+
             <style>{`
                 /* Estilização do Botão de Opções (Dropdown) para combinar com a interface plana */
                 .flat-dropdown-toggle {
@@ -320,6 +397,20 @@ const ProductDesktopTable = ({
                 body.dark-mode .custom-dropdown .dropdown-item:hover { background-color: var(--bg-hover); color: var(--text-primary); }
                 body.dark-mode .custom-dropdown .text-danger:hover { background-color: rgba(239, 68, 68, 0.1); color: #ef4444; }
                 body.dark-mode .custom-dropdown .dropdown-divider { border-color: var(--border-color); }
+
+                /* Fix para a paginação no modo dark */
+                body.dark-mode .btn-light {
+                    background-color: var(--bg-body);
+                    border-color: var(--border-color) !important;
+                    color: var(--text-primary) !important;
+                }
+                body.dark-mode .btn-light:hover:not(:disabled) {
+                    background-color: var(--bg-hover);
+                }
+                body.dark-mode .btn-light:disabled {
+                    background-color: var(--bg-sidebar);
+                    opacity: 0.5;
+                }
             `}</style>
         </div>
     );

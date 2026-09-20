@@ -15,6 +15,10 @@ import FacebookModal from '../../components/modules/integrations/FacebookModal';
 import WhatsAppModal from '../../components/modules/integrations/WhatsAppModal';
 import IfoodModal from '../../components/modules/integrations/IfoodModal';
 import AiConfigModal from '../../components/modules/integrations/AiConfigModal';
+import KanbanModal from '../../components/modules/integrations/WhazingModal'; 
+
+// 🟢 NOVO: Importando o Card Inteligente do WebAzun (Verifique se o caminho da pasta está correto!)
+import WebAzunIntegrationCard from '../../components/modules/integrations/WebAzunIntegrationCard'; 
 
 // ============================================================================
 // 💳 COMPONENTE CARD MINIMALISTA
@@ -95,17 +99,17 @@ const ApiKeysPage = () => {
     const [showImgBB, setShowImgBB] = useState(false);
     const [showCloudinary, setShowCloudinary] = useState(false);
     const [showWhatsApp, setShowWhatsApp] = useState(false);
-    const [showIfood, setShowIfood] = useState(false); // 🍔 NOVO ESTADO AQUI
+    const [showIfood, setShowIfood] = useState(false); 
     const [legacyData, setLegacyData] = useState(null);
     const [showAi, setShowAi] = useState(false);
+    const [showKanban, setShowKanban] = useState(false);
 
     const fetchKeyStatus = async (isBackground = false) => {
-        // Só mostra o Spinner se NÃO for background
         if (!isBackground) setLoading(true);
 
         try {
             const [
-                mlRes, tiktokRes, legacyRes, imgbbRes, cloudRes, googleRes, fbRes, imgProviderRes, whatsappRes, ifoodRes // 🍔 ADICIONADO ifoodRes
+                mlRes, tiktokRes, legacyRes, imgbbRes, cloudRes, googleRes, fbRes, imgProviderRes, whatsappRes, ifoodRes, kanbanRes 
             ] = await Promise.all([
                 api.get('/apikeys/mercadolivre').catch(() => ({ data: {} })),
                 api.get('/apikeys/tiktok').catch(() => ({ data: {} })),
@@ -116,7 +120,8 @@ const ApiKeysPage = () => {
                 api.get('/apikeys/facebook').catch(() => ({ data: {} })),
                 api.get('/configuracoes/UPLOAD_PROVIDER').catch(() => ({ data: { valor: 'imgbb' } })),
                 api.get('/whatsapp/status').catch(() => ({ data: { status: 'DISCONNECTED' } })),
-                api.get('/ifood/status').catch(() => ({ data: { connected: false } })) // 🍔 NOVA CHAMADA AQUI
+                api.get('/ifood/status').catch(() => ({ data: { connected: false } })),
+                api.get('/configuracoes/KANBAN_TOKEN').catch(() => ({ data: {} })) 
             ]);
 
             setKeyStatus({
@@ -128,7 +133,8 @@ const ApiKeysPage = () => {
                 GOOGLE_CLIENT_ID: googleRes.data?.clientId,
                 FACEBOOK_CONFIGURED: fbRes.data?.FB_PIXEL_ID,
                 WHATSAPP_CONFIGURED: whatsappRes.data?.status === 'CONNECTED',
-                IFOOD_CONFIGURED: ifoodRes.data?.connected // 🍔 NOVO STATUS AQUI
+                IFOOD_CONFIGURED: ifoodRes.data?.connected,
+                KANBAN_CONFIGURED: !!kanbanRes.data?.valor 
             });
 
             setActiveImgProvider(imgProviderRes.data?.valor || 'imgbb');
@@ -144,7 +150,6 @@ const ApiKeysPage = () => {
 
     useEffect(() => { fetchKeyStatus(false); }, []);
 
-    // 🟢 2. Passe true para fazer em background e não piscar a tela
     const handleSuccess = (msg) => {
         if (msg) setSuccess(msg);
         fetchKeyStatus(true);
@@ -197,12 +202,22 @@ const ApiKeysPage = () => {
                 <MinimalCard
                     title="Configuração da IA (BETA)"
                     status={true}
-                    // 🟢 MUDANÇA: Use a prop 'icon' para que o componente trate o tamanho e o círculo automaticamente
                     icon="/images/groq.png"
                     color="#0D6EFD"
                     onClick={() => setShowAi(true)}
                     description="Controle o comportamento e automação do robô."
                 />
+                
+                {/* 🟢 AQUI ESTÁ O NOVO CARD DO KANBAN INTEGRADO AO GRID */}
+                <Col xs={12} sm={6} lg={4} xl={3}>
+                    <WebAzunIntegrationCard 
+                        statusConfigurado={keyStatus.KANBAN_CONFIGURED} 
+                        onConfigureClick={() => setShowKanban(true)} 
+                        onManageClick={() => {
+                            window.open('https://core.azun.com.br', '_blank'); 
+                        }}
+                    />
+                </Col>
             </Row>
 
             {/* MARKETPLACE & MARKETING */}
@@ -210,11 +225,9 @@ const ApiKeysPage = () => {
             <Row className="g-3 g-md-4 mb-5">
                 <MinimalCard title="Mercado Livre" status={keyStatus.MERCADO_LIVRE_CONFIGURED} icon="/images/mercado-livre-logo-vertical-2.png" color="#FFE600" onClick={() => setShowML(true)} description="Sincronize produtos e pedidos." />
 
-                {/* 🍔 NOVO CARD DO IFOOD AQUI */}
                 <MinimalCard
                     title="iFood"
                     status={keyStatus.IFOOD_CONFIGURED}
-                    // 🟢 MUDANÇA: Agora usando o ícone local do iFood
                     icon="/images/ifood.png"
                     color="#EA1D2C"
                     onClick={() => setShowIfood(true)}
@@ -267,8 +280,9 @@ const ApiKeysPage = () => {
             <ImgBBModal show={showImgBB} onHide={() => setShowImgBB(false)} isConfigured={keyStatus.IMGBB_API_KEY} onUpdateSuccess={handleSuccess} />
             <CloudinaryModal show={showCloudinary} onHide={() => setShowCloudinary(false)} isConfigured={keyStatus.CLOUDINARY_CONFIGURED} onUpdateSuccess={handleSuccess} />
             <WhatsAppModal show={showWhatsApp} onHide={() => setShowWhatsApp(false)} onUpdateSuccess={handleSuccess} />
-            <IfoodModal show={showIfood} onHide={() => setShowIfood(false)} isConfigured={keyStatus.IFOOD_CONFIGURED} onUpdateSuccess={handleSuccess} /> {/* 🍔 NOVO MODAL AQUI */}
+            <IfoodModal show={showIfood} onHide={() => setShowIfood(false)} isConfigured={keyStatus.IFOOD_CONFIGURED} onUpdateSuccess={handleSuccess} />
             <AiConfigModal show={showAi} onHide={() => setShowAi(false)} onUpdateSuccess={handleSuccess} />
+            <KanbanModal show={showKanban} onHide={() => setShowKanban(false)} onUpdateSuccess={handleSuccess} />
 
             <style>{`
                 .shadow-hover:hover { transform: translateY(-3px); box-shadow: 0 .5rem 1.5rem rgba(0,0,0,.08)!important; }

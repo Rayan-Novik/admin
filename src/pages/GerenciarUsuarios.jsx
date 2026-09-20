@@ -10,7 +10,6 @@ import { CtaButton, LightButton, RedButton, GreenButton } from '../components/ui
 import { SquareButton, RedSquareButton } from '../components/ui/buttons/SquareButton';
 import { FlatListContainer, FlatListHeader, FlatListItem } from '../components/ui/listagem/FlatList';
 
-// Helper para gerar iniciais do nome
 const getInitials = (name) => {
     if (!name) return '??';
     const names = name.split(' ');
@@ -20,9 +19,6 @@ const getInitials = (name) => {
 };
 
 const GerenciarEquipe = () => {
-    // ==============================================================
-    // LÓGICA DE PERMISSÕES DO FRONTEND
-    // ==============================================================
     let isAdminGlobal = false;
     let temView = false;
     let temManage = false;
@@ -32,42 +28,32 @@ const GerenciarEquipe = () => {
             const key = localStorage.key(i);
             const val = localStorage.getItem(key);
             if (!val) continue;
-
             const upperVal = val.toUpperCase();
-
-            if (upperVal.includes('PROPRIETÁRIO') || 
-                upperVal.includes('PROPRIETARIO') || 
-                upperVal.includes('"ROLE":"ADMIN"') || 
-                upperVal.includes('"ROLE":"DONO"') || 
-                upperVal.includes('"ISADMIN":TRUE')) {
+            if (upperVal.includes('PROPRIETÁRIO') || upperVal.includes('PROPRIETARIO') || upperVal.includes('"ROLE":"ADMIN"') || upperVal.includes('"ROLE":"DONO"') || upperVal.includes('"ISADMIN":TRUE')) {
                 isAdminGlobal = true;
             }
-
             if (upperVal.includes('EQUIPE_VIEW')) temView = true;
             if (upperVal.includes('EQUIPE_MANAGE')) temManage = true;
         }
-    } catch (error) {
-        console.error("Erro ao varrer permissões", error);
-    }
+    } catch (error) {}
 
     const podeVer = isAdminGlobal || temView || temManage;
     const podeEditar = isAdminGlobal || temManage;
-    // ==============================================================
 
     const [funcionarios, setFuncionarios] = useState([]);
     const [cargos, setCargos] = useState([]); 
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
 
-    // Controle dos Modais
     const [showModal, setShowModal] = useState(false);
     const [showDeleteModal, setShowDeleteModal] = useState(false);
     const [deleteData, setDeleteData] = useState({ id_funcionario: null, nome: '' });
     
-    // Estado do formulário
+    // 🟢 ESTADO ATUALIZADO: Inclui flags do Whazing
     const [formData, setFormData] = useState({
         id_funcionario: '', nome_completo: '', email: '', role: '', id_cargo: '',
-        senha: '', codigo_acesso: '', ativo: true
+        senha: '', codigo_acesso: '', ativo: true,
+        sync_whazing: false, senha_whazing: ''
     });
 
     const loadData = async () => {
@@ -87,10 +73,7 @@ const GerenciarEquipe = () => {
         }
     };
 
-    useEffect(() => { 
-        loadData(); 
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
+    useEffect(() => { loadData(); }, []);
 
     const filteredFuncionarios = useMemo(() => {
         if (!searchTerm) return funcionarios;
@@ -134,7 +117,8 @@ const GerenciarEquipe = () => {
             id_funcionario: '', nome_completo: '', email: '', 
             id_cargo: cargos.length > 0 ? cargos[0].id_cargo : '', 
             role: cargos.length > 0 ? cargos[0].nome : 'ATENDENTE',
-            senha: '', codigo_acesso: '', ativo: true
+            senha: '', codigo_acesso: '', ativo: true,
+            sync_whazing: false, senha_whazing: ''
         });
         setShowModal(true);
     };
@@ -149,7 +133,8 @@ const GerenciarEquipe = () => {
             id_cargo: func.id_cargo || '',
             codigo_acesso: func.codigo_acesso || '',
             ativo: func.ativo,
-            senha: '' 
+            senha: '',
+            sync_whazing: false, senha_whazing: '' 
         });
         setShowModal(true);
     };
@@ -164,7 +149,9 @@ const GerenciarEquipe = () => {
                 role: formData.role, 
                 id_cargo: formData.id_cargo ? parseInt(formData.id_cargo) : null,
                 codigo_acesso: formData.codigo_acesso,
-                ativo: formData.ativo
+                ativo: formData.ativo,
+                sync_whazing: formData.sync_whazing,
+                senha_whazing: formData.senha_whazing
             };
 
             if (formData.senha) payload.senha = formData.senha;
@@ -216,7 +203,6 @@ const GerenciarEquipe = () => {
         fontSize: '14px', boxShadow: 'none', width: '100%', padding: '0 15px'
     };
 
-    // 🛑 BLOQUEIO PARA QUEM NÃO PODE VER A TELA
     if (!podeVer) {
         return (
             <div className="d-flex justify-content-center pt-5 mt-5">
@@ -311,8 +297,6 @@ const GerenciarEquipe = () => {
                                     >
                                         <FlatListItem className="py-3">
                                             <div className="row w-100 m-0 align-items-center">
-                                                
-                                                {/* 1. Nome / Avatar */}
                                                 <div className="col-12 col-lg-3 p-0 mb-3 mb-lg-0 d-flex align-items-center">
                                                     <div 
                                                         className={`rounded-circle d-flex align-items-center justify-content-center bg-${getRoleColor(func.role)} bg-opacity-10 text-${getRoleColor(func.role)} fw-bold flex-shrink-0 me-3 ${!func.ativo && 'opacity-50'}`} 
@@ -328,7 +312,6 @@ const GerenciarEquipe = () => {
                                                     </div>
                                                 </div>
 
-                                                {/* 2. E-mail / Código */}
                                                 <div className="col-12 col-lg-3 p-0 mb-3 mb-lg-0">
                                                     <span className="d-inline d-lg-none text-muted fw-normal me-1 small">Acesso:</span>
                                                     <div className="fw-medium text-dark text-truncate d-inline-block align-bottom w-100" style={{ fontSize: '13px' }}>
@@ -341,7 +324,6 @@ const GerenciarEquipe = () => {
                                                     )}
                                                 </div>
 
-                                                {/* 3. Cargo */}
                                                 <div className="col-6 col-lg-2 p-0 mb-3 mb-lg-0">
                                                     <span className="d-inline d-lg-none text-muted fw-normal me-1 small">Cargo:</span>
                                                     <span className={`badge bg-${getRoleColor(func.role)} bg-opacity-10 text-${getRoleColor(func.role)} px-3 py-2 rounded-pill fw-bold text-uppercase d-inline-block`} style={{ fontSize: '10px', letterSpacing: '0.5px' }}>
@@ -349,14 +331,12 @@ const GerenciarEquipe = () => {
                                                     </span>
                                                 </div>
 
-                                                {/* 4. Status */}
                                                 <div className="col-6 col-lg-2 p-0 mb-3 mb-lg-0 text-lg-center">
                                                     <span className={`badge px-3 py-2 rounded-pill fw-bold bg-opacity-10 border border-opacity-25 ${func.ativo ? 'bg-success text-success border-success' : 'bg-secondary text-secondary border-secondary'}`} style={{ fontSize: '11px' }}>
                                                         {func.ativo ? 'Ativo' : 'Bloqueado'}
                                                     </span>
                                                 </div>
 
-                                                {/* 5. Ações */}
                                                 {podeEditar && (
                                                     <div className="col-12 col-lg-2 p-0 mt-2 mt-lg-0 d-flex flex-wrap justify-content-lg-end align-items-center gap-2">
                                                         <SquareButton onClick={() => handleEditClick(func)} color="var(--bg-sidebar, #F4F6FA)">
@@ -381,7 +361,7 @@ const GerenciarEquipe = () => {
                 </div>
             </div>
 
-            {/* --- MODAL CRIAÇÃO/EDIÇÃO (SEM BOOTSTRAP FORMS) --- */}
+            {/* --- MODAL CRIAÇÃO/EDIÇÃO --- */}
             {podeEditar && (
                 <Modal show={showModal} onHide={() => setShowModal(false)} centered backdrop="static" size="lg" contentClassName="border-0 rounded-4 shadow-lg overflow-hidden">
                     <div className="p-4 text-white position-relative" style={{ backgroundColor: '#0f172a' }}>
@@ -408,7 +388,7 @@ const GerenciarEquipe = () => {
                                     <CustomInput required value={formData.nome_completo} onChange={(e) => setFormData({...formData, nome_completo: e.target.value})} placeholder="Ex: João da Silva" />
                                 </div>
                                 <div className="col-md-7">
-                                    <label className="fw-semibold small text-dark mb-1">E-mail de Acesso</label>
+                                    <label className="fw-semibold small text-dark mb-1">E-mail de Acesso (ERP)</label>
                                     <CustomInput type="email" required value={formData.email} onChange={(e) => setFormData({...formData, email: e.target.value})} placeholder="email@exemplo.com" />
                                 </div>
                                 <div className="col-md-5">
@@ -420,7 +400,7 @@ const GerenciarEquipe = () => {
                             <div className="d-flex justify-content-between align-items-center mb-3 pt-3 border-top" style={{ borderColor: 'rgba(100, 116, 139, 0.15)' }}>
                                 <div>
                                     <h6 className="text-uppercase small fw-bold mb-0" style={{ color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>Segurança e Permissões</h6>
-                                    <small className="text-secondary">Defina se a conta está ativa ou bloqueada.</small>
+                                    <small className="text-secondary">Defina se a conta está ativa e as permissões de acesso.</small>
                                 </div>
                                 <Form.Check 
                                     type="switch"
@@ -451,10 +431,52 @@ const GerenciarEquipe = () => {
                                     </select>
                                 </div>
                                 <div className="col-md-6">
-                                    <label className="fw-semibold small text-dark mb-1">{formData.id_funcionario ? 'Nova Senha (vazio para manter)' : 'Senha Inicial'}</label>
-                                    <CustomInput type="password" required={!formData.id_funcionario} value={formData.senha} onChange={(e) => setFormData({...formData, senha: e.target.value})} placeholder="******" />
+                                    <label className="fw-semibold small text-dark mb-1">{formData.id_funcionario ? 'Nova Senha ERP (vazio para manter)' : 'Senha Inicial ERP'}</label>
+                                    <CustomInput type="text" required={!formData.id_funcionario} value={formData.senha} onChange={(e) => setFormData({...formData, senha: e.target.value})} placeholder="******" />
                                 </div>
                             </div>
+
+                            {/* 🟢 SEÇÃO DE INTEGRAÇÃO WHAZING */}
+                            <div className="d-flex justify-content-between align-items-center mb-3 mt-4 pt-4 border-top" style={{ borderColor: 'rgba(100, 116, 139, 0.15)' }}>
+                                <div>
+                                    <h6 className="text-uppercase small fw-bold mb-0" style={{ color: '#038bfe', letterSpacing: '0.5px' }}>
+                                        <i className="bi bi-whatsapp me-2"></i>Acesso ao CRM (AzunWeb)
+                                    </h6>
+                                    <small className="text-secondary">Criar ou sincronizar senha com o painel de atendimento.</small>
+                                </div>
+                                <Form.Check 
+                                    type="switch"
+                                    id="whazing-switch"
+                                    checked={formData.sync_whazing}
+                                    onChange={(e) => setFormData({...formData, sync_whazing: e.target.checked})}
+                                    className="fw-bold fs-5 m-0"
+                                />
+                            </div>
+
+                            {formData.sync_whazing && (
+                                <motion.div 
+                                    initial={{ opacity: 0, height: 0 }} 
+                                    animate={{ opacity: 1, height: 'auto' }} 
+                                    className="row g-3 p-3 rounded-4" 
+                                    style={{ backgroundColor: 'rgba(3, 139, 254, 0.08)', border: '1px solid rgba(3, 139, 254, 0.2)' }}
+                                >
+                                    <div className="col-12">
+                                        <label className="fw-semibold small text-dark mb-1">Senha de Acesso Whazing</label>
+                                        <CustomInput 
+                                            type="text" 
+                                            value={formData.senha_whazing} 
+                                            onChange={(e) => setFormData({...formData, senha_whazing: e.target.value})} 
+                                            placeholder="Digite a senha (ou deixe vazio para manter a atual do CRM)" 
+                                            required={formData.sync_whazing && !formData.id_funcionario} 
+                                        />
+                                        <small className="text-muted d-block mt-2">
+                                            O login no painel será o e-mail: <strong>{formData.email || '...'}</strong><br/>
+                                            <i className="bi bi-info-circle me-1"></i> O perfil dele (Admin ou Usuário comum) será definido automaticamente pelo cargo selecionado acima.
+                                        </small>
+                                    </div>
+                                </motion.div>
+                            )}
+
                         </Modal.Body>
 
                         <Modal.Footer className="border-0 pt-0 px-4 pb-4 d-flex gap-2" style={{ backgroundColor: 'var(--bg-sidebar)' }}>
@@ -469,7 +491,7 @@ const GerenciarEquipe = () => {
                 </Modal>
             )}
 
-            {/* --- MODAL EXCLUSÃO (SEM BOOTSTRAP ALERTS NATIVOS) --- */}
+            {/* --- MODAL EXCLUSÃO --- */}
             {podeEditar && (
                 <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered backdrop="static" contentClassName="border-0 rounded-4 shadow-lg">
                     <Modal.Body className="p-5 text-center" style={{ backgroundColor: 'var(--bg-sidebar)', borderRadius: '16px' }}>
