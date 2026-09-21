@@ -10,39 +10,31 @@ const KanbanPage = () => {
     const [selectedBoard, setSelectedBoard] = useState('');
     const [columns, setColumns] = useState([]);
     const [cards, setCards] = useState([]);
-    // 🟢 ESTADO DOS RÓTULOS DO BOARD
     const [boardLabels, setBoardLabels] = useState([]); 
     const [loading, setLoading] = useState(false);
 
-    // Listas do sistema
     const [produtosLista, setProdutosLista] = useState([]);
 
-    // Estados para o Modal de Edição
     const [showEditModal, setShowEditModal] = useState(false);
     const [editingCard, setEditingCard] = useState(null);
     const [saving, setSaving] = useState(false);
     const [activeTab, setActiveTab] = useState('detalhes');
 
-    // Estados para o Checklist
     const [checklists, setChecklists] = useState([]);
     const [loadingChecklists, setLoadingChecklists] = useState(false);
     const [newChecklistTitle, setNewChecklistTitle] = useState('');
 
-    // Estado para controle visual do Drag and Drop
     const [dragOverColId, setDragOverColId] = useState(null);
 
-    // ESTADOS DO AUTOCOMPLETE ESTILO WHATICKET
     const [searchTerm, setSearchTerm] = useState('');
     const [searchResults, setSearchResults] = useState([]);
     const [isSearchingContacts, setIsSearchingContacts] = useState(false);
     const [showContactDropdown, setShowContactDropdown] = useState(false);
     const dropdownRef = useRef(null);
 
-    // 🟢 ESTADOS PARA O CHAT
     const [showChatModal, setShowChatModal] = useState(false);
     const [chatCard, setChatCard] = useState(null);
 
-    // 🟢 CACHE DE MEMÓRIA
     const [contactCache, setContactCache] = useState(() => {
         try {
             const saved = localStorage.getItem('whazing_contacts_cache');
@@ -61,71 +53,110 @@ const KanbanPage = () => {
         });
     };
 
+    // ==========================================
+    // 1. CARREGAMENTO INICIAL DE DADOS
+    // ==========================================
     useEffect(() => {
+        let isMounted = true; // Previne atualizações de estado se o componente desmontar
+        
         const fetchInitialData = async () => {
             try {
                 setLoading(true);
+                
                 const [boardsRes, produtosRes] = await Promise.all([
-                    api.get('/kanban/boards'),
-                    api.get('/produtos')
+                    api.get('/kanban/boards').catch(() => ({ data: [] })),
+                    api.get('/produtos').catch(() => ({ data: [] }))
                 ]);
 
+                if (!isMounted) return;
+
+                // Garante que é array, mesmo se o backend mandar null/undefined
                 const boardsArray = Array.isArray(boardsRes.data) ? boardsRes.data : (boardsRes.data?.boards || []);
                 setBoards(boardsArray);
-                if (boardsArray.length > 0) setSelectedBoard(boardsArray[0].id);
+                
+                if (boardsArray.length > 0) {
+                    setSelectedBoard(boardsArray[0].id);
+                }
 
                 setProdutosLista(produtosRes.data || []);
             } catch (error) {
-                toast.error('Erro ao carregar dados iniciais');
-                setBoards([]);
+                if (isMounted) {
+                    console.error("Erro no carregamento inicial:", error);
+                    toast.error('Erro ao carregar os quadros.');
+                    setBoards([]);
+                }
             } finally {
-                setLoading(false);
+                if (isMounted) setLoading(false);
             }
         };
+
         fetchInitialData();
+        return () => { isMounted = false; };
     }, []);
 
-    const fetchKanbanData = async () => {
-        if (!selectedBoard) return;
-        try {
-            setLoading(true);
-            const [colsRes, cardsRes, labelsRes] = await Promise.all([
-                api.get(`/kanban/boards/${selectedBoard}/columns`),
-                api.get(`/kanban/boards/${selectedBoard}/cards`),
-                api.get(`/kanban/boards/${selectedBoard}/labels`).catch(() => ({ data: [] }))
-            ]);
-
-            const colsArray = Array.isArray(colsRes.data) ? colsRes.data : (colsRes.data?.columns || []);
-            let cardsArray = Array.isArray(cardsRes.data) ? cardsRes.data : (cardsRes.data?.cards || []);
-            const labelsArray = Array.isArray(labelsRes.data) ? labelsRes.data : (labelsRes.data?.labels || []);
-
-            // 🟢 MAGIA ACONTECENDO AQUI: Associa os Rótulos Visuais aos IDs do Card!
-            cardsArray = cardsArray.map(card => {
-                if (card.labelIds && Array.isArray(card.labelIds)) {
-                    // Pega os objetos inteiros de labels do Board cujo ID está no card.labelIds
-                    card.labelsObjects = labelsArray.filter(lbl => card.labelIds.includes(lbl.id));
-                } else {
-                    card.labelsObjects = [];
-                }
-                return card;
-            });
-
-            setColumns(colsArray.sort((a, b) => a.sortOrder - b.sortOrder));
-            setCards(cardsArray);
-            setBoardLabels(labelsArray);
-        } catch (error) {
-            toast.error('Erro ao carregar dados do quadro');
-            setColumns([]); setCards([]); setBoardLabels([]);
-        } finally {
-            setLoading(false);
-        }
-    };
-
+    // ==========================================
+    // 2. CARREGAMENTO DO BOARD SELECIONADO
+    // ==========================================
     useEffect(() => {
+        if (!selectedBoard) return;
+        
+        let isMounted = true;
+        
+        const fetchKanbanData = async () => {
+            try {
+                setLoading(true);
+                
+                const [colsRes, cardsRes, labelsRes] = await Promise.all([
+                    api.get(`/kanban/boards/${selectedBoard}/columns`).catch(() => ({ data: [] })),
+                    api.get(`/kanban/boards/${selectedBoard}/cards`).catch(() => ({ data: [] })),
+                    api.get(`/kanban/boards/${selectedBoard}/labels`).catch(() => ({ data: [] }))
+                ]);
+
+                if (!isMounted) return;
+
+                // 🟢 DEFESAS RIGOROSAS CONTRA UNDEFINED
+                const colsArray = Array.isArray(colsRes.data) ? colsRes.data : (colsRes.data?.columns || []);
+                let cardsArray = Array.isArray(cardsRes.data) ? cardsRes.data : (cardsRes.data?.cards || []);
+                const labelsArray = Array.isArray(labelsRes.data) ? labelsRes.data : (labelsRes.data?.labels || []);
+
+                // Associa Rótulos
+                cardsArray = cardsArray.map(card => {
+                    if (card && card.labelIds && Array.isArray(card.labelIds)) {
+                        card.labelsObjects = labelsArray.filter(lbl => lbl && card.labelIds.includes(lbl.id));
+                    } else {
+                        card.labelsObjects = [];
+                    }
+                    return card;
+                });
+
+                // Ordena colunas
+                const sortedCols = [...colsArray].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+
+                setColumns(sortedCols);
+                setCards(cardsArray);
+                setBoardLabels(labelsArray);
+            } catch (error) {
+                if (isMounted) {
+                    console.error("Erro ao carregar Kanban:", error);
+                    toast.error('Falha ao carregar as colunas do quadro.');
+                    setColumns([]); 
+                    setCards([]); 
+                    setBoardLabels([]);
+                }
+            } finally {
+                if (isMounted) setLoading(false);
+            }
+        };
+
         fetchKanbanData();
-        // eslint-disable-next-line react-hooks/exhaustive-deps
+        
+        return () => { isMounted = false; };
     }, [selectedBoard]);
 
+
+    // ==========================================
+    // LÓGICAS DO CHECKLIST
+    // ==========================================
     const fetchChecklistsForCard = async (cardId) => {
         try {
             setLoadingChecklists(true);
@@ -140,6 +171,7 @@ const KanbanPage = () => {
     };
 
     const extrairTelefoneDoCard = (card) => {
+        if(!card) return '';
         const realContactId = card.contactId || (card.contact ? card.contact.id : '');
         const cachedInfo = contactCache[realContactId] || {};
         let fone = cachedInfo.number || '';
@@ -161,7 +193,7 @@ const KanbanPage = () => {
             return toast.warning("Edite o card e adicione um contato primeiro!");
         }
 
-        setChatCard({ ...card, telefone: fone, nomeExibicao: nomeExibe });
+        setChatCard({ ...card, telefone: fone, nomeExibe });
         setShowChatModal(true);
     };
 
@@ -188,7 +220,6 @@ const KanbanPage = () => {
             contactId: realContactId,
             telefone: telefoneExtraido,
             contactName: nomeExtraido,
-            // 🟢 Injeta os rótulos do estado do Card no Modal!
             labels: card.labelsObjects || [] 
         });
 
@@ -202,6 +233,7 @@ const KanbanPage = () => {
 
     const handleToggleLabel = (label) => {
         setEditingCard(prev => {
+            if(!prev) return prev;
             const currentLabels = prev.labels || [];
             const hasLabel = currentLabels.some(l => l.id === label.id);
             
@@ -211,7 +243,6 @@ const KanbanPage = () => {
             } else {
                 newLabels = [...currentLabels, label]; 
             }
-
             return { ...prev, labels: newLabels };
         });
     };
@@ -241,7 +272,6 @@ const KanbanPage = () => {
                     const { data } = await api.get(`/kanban/whazing/contacts/search?q=${searchTerm}`);
                     setSearchResults(Array.isArray(data) ? data : []);
                 } catch (error) {
-                    console.error("Erro na busca de contatos", error);
                     setSearchResults([]);
                 } finally {
                     setIsSearchingContacts(false);
@@ -259,12 +289,10 @@ const KanbanPage = () => {
         const nomeExtraido = contact.nome_completo || contact.name || contact.email || 'Sem Nome';
         const cId = contact.id || contact.id_usuario || '';
 
-        setEditingCard(prev => ({
-            ...prev,
-            contactId: cId,
-            telefone: telExtraido,
-            contactName: nomeExtraido 
-        }));
+        setEditingCard(prev => {
+            if(!prev) return prev;
+            return { ...prev, contactId: cId, telefone: telExtraido, contactName: nomeExtraido };
+        });
 
         saveToCache(cId, nomeExtraido, telExtraido);
         
@@ -282,6 +310,9 @@ const KanbanPage = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    // ==========================================
+    // DRAG AND DROP LÓGICAS
+    // ==========================================
     const handleDragStart = (e, card) => {
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('draggedCard', JSON.stringify(card));
@@ -317,11 +348,42 @@ const KanbanPage = () => {
             await api.put(`/kanban/cards/${draggedCard.id}`, payload);
         } catch (error) {
             toast.error('Erro ao mover card.');
-            setCards(backupCards);
+            setCards(backupCards); // Retorna a posição anterior se falhar
+        }
+    };
+
+    const forceFetchKanbanData = async () => {
+        if (!selectedBoard) return;
+        try {
+            const [colsRes, cardsRes, labelsRes] = await Promise.all([
+                api.get(`/kanban/boards/${selectedBoard}/columns`).catch(() => ({ data: [] })),
+                api.get(`/kanban/boards/${selectedBoard}/cards`).catch(() => ({ data: [] })),
+                api.get(`/kanban/boards/${selectedBoard}/labels`).catch(() => ({ data: [] }))
+            ]);
+
+            const colsArray = Array.isArray(colsRes.data) ? colsRes.data : (colsRes.data?.columns || []);
+            let cardsArray = Array.isArray(cardsRes.data) ? cardsRes.data : (cardsRes.data?.cards || []);
+            const labelsArray = Array.isArray(labelsRes.data) ? labelsRes.data : (labelsRes.data?.labels || []);
+
+            cardsArray = cardsArray.map(card => {
+                if (card && card.labelIds && Array.isArray(card.labelIds)) {
+                    card.labelsObjects = labelsArray.filter(lbl => lbl && card.labelIds.includes(lbl.id));
+                } else {
+                    card.labelsObjects = [];
+                }
+                return card;
+            });
+
+            setColumns([...colsArray].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)));
+            setCards(cardsArray);
+            setBoardLabels(labelsArray);
+        } catch (e) {
+            console.error("Erro no refresh silencioso", e);
         }
     };
 
     const handleSaveCard = async () => {
+        if(!editingCard) return;
         try {
             setSaving(true);
             let numericValue = parseFloat(String(editingCard.value || 0).replace(',', '.'));
@@ -330,15 +392,11 @@ const KanbanPage = () => {
                 priority: editingCard.priority,
                 columnId: Number(editingCard.columnId),
                 dealValue: numericValue,
-                // 🟢 MANDA OS IDS DOS RÓTULOS (Labels)
                 labelIds: editingCard.labels?.map(l => l.id) || [] 
             };
 
             if (editingCard.assigneeId && !isNaN(Number(editingCard.assigneeId))) payload.assigneeId = Number(editingCard.assigneeId);
-
-            if (editingCard.contactId && !isNaN(Number(editingCard.contactId))) {
-                payload.contactId = Number(editingCard.contactId);
-            }
+            if (editingCard.contactId && !isNaN(Number(editingCard.contactId))) payload.contactId = Number(editingCard.contactId);
 
             payload.note = editingCard.note || '';
             if (editingCard.dueDate) payload.dueDate = editingCard.dueDate.split('T')[0];
@@ -346,22 +404,22 @@ const KanbanPage = () => {
             await api.put(`/kanban/cards/${editingCard.id}`, payload);
             toast.success('Card atualizado com sucesso!');
             setShowEditModal(false);
-            fetchKanbanData(); // Atualiza a tela puxando o getCards de novo
+            forceFetchKanbanData(); // Atualização sem ativar a tela de loading inteira
         } catch (error) {
-            toast.error('Erro ao atualizar card. Verifique o console.');
+            toast.error('Erro ao atualizar card.');
         } finally {
             setSaving(false);
         }
     };
 
     const handleArchiveCard = async () => {
-        if (!window.confirm("Deseja arquivar este card?")) return;
+        if (!editingCard || !window.confirm("Deseja arquivar este card?")) return;
         try {
             setSaving(true);
             await api.delete(`/kanban/cards/${editingCard.id}`);
             toast.success('Card arquivado!');
             setShowEditModal(false);
-            fetchKanbanData();
+            forceFetchKanbanData();
         } catch (error) {
             toast.error('Erro ao arquivar card.');
         } finally {
@@ -370,7 +428,7 @@ const KanbanPage = () => {
     };
 
     const handleSendQuote = async () => {
-        let numeroDestino = editingCard.telefone;
+        let numeroDestino = editingCard?.telefone;
         if (!numeroDestino && searchTerm) {
             numeroDestino = searchTerm.replace(/\D/g, '');
         }
@@ -396,26 +454,22 @@ const KanbanPage = () => {
 
             const textMsg = `✅ *Orçamento de Pedido*\n\nOlá! Segue o detalhamento do atendimento referente a: *${editingCard.title}*.\n\n📦 *Produtos/Itens:*\n${itensTexto}\n\n💰 *Valor Total:* R$ ${Number(editingCard.value || 0).toFixed(2)}\n\nSe precisar de algo, estamos à disposição!`;
 
-            await api.post('/kanban/whazing/message', { 
-                number: numeroDestino, 
-                message: textMsg 
-            });
-            
-            toast.success("Orçamento detalhado enviado ao WhatsApp do cliente!");
+            await api.post('/kanban/whazing/message', { number: numeroDestino, message: textMsg });
+            toast.success("Orçamento enviado ao WhatsApp!");
         } catch (error) {
-            toast.error("Falha ao enviar orçamento via WhatsApp.");
+            toast.error("Falha ao enviar orçamento.");
         } finally {
             setSaving(false);
         }
     };
 
     const handleAddChecklist = async () => {
-        if (!newChecklistTitle || !newChecklistTitle.trim()) return;
+        if (!editingCard || !newChecklistTitle || !newChecklistTitle.trim()) return;
         try {
             await api.post(`/kanban/cards/${editingCard.id}/checklists`, { text: newChecklistTitle, isCompleted: false });
             setNewChecklistTitle('');
             fetchChecklistsForCard(editingCard.id);
-        } catch (error) { toast.error('Erro ao adicionar produto no checklist.'); }
+        } catch (error) { toast.error('Erro ao adicionar item.'); }
     };
 
     const handleToggleChecklist = async (item) => {
@@ -423,8 +477,8 @@ const KanbanPage = () => {
             setChecklists(checklists.map(c => c.id === item.id ? { ...c, isCompleted: !item.isCompleted } : c));
             await api.put(`/kanban/checklists/${item.id}`, { text: item.text || item.title, isCompleted: !item.isCompleted });
         } catch (error) {
-            toast.error('Erro ao atualizar produto.');
-            fetchChecklistsForCard(editingCard.id);
+            toast.error('Erro ao atualizar item.');
+            if(editingCard) fetchChecklistsForCard(editingCard.id);
         }
     };
 
@@ -433,7 +487,7 @@ const KanbanPage = () => {
         try {
             await api.delete(`/kanban/checklists/${itemId}`);
             setChecklists(checklists.filter(c => c.id !== itemId));
-        } catch (error) { toast.error('Erro ao deletar produto.'); }
+        } catch (error) { toast.error('Erro ao deletar.'); }
     };
 
     const formatCurrency = (val) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(val || 0);
@@ -455,24 +509,54 @@ const KanbanPage = () => {
                     <p className="text-muted mb-0">Acompanhe o funil de pedidos e clientes (Integração WebAzun)</p>
                 </div>
                 <div style={{ minWidth: '250px' }}>
-                    <Form.Select value={selectedBoard} onChange={(e) => setSelectedBoard(e.target.value)} disabled={loading || boards.length === 0} className="shadow-sm border-0">
-                        {boards.length === 0 && <option value="">Nenhum quadro encontrado</option>}
+                    <Form.Select 
+                        value={selectedBoard} 
+                        onChange={(e) => setSelectedBoard(e.target.value)} 
+                        disabled={loading || boards.length === 0} 
+                        className="shadow-sm border-0"
+                    >
+                        {boards.length === 0 && <option value="">{loading ? 'Carregando...' : 'Nenhum quadro'}</option>}
                         {boards.map(board => <option key={board.id} value={board.id}>{board.name}</option>)}
                     </Form.Select>
                 </div>
             </div>
 
+            {/* SE O LOADING TIVER ATIVO E COLUNAS TIVER VAZIO */}
             {loading && columns.length === 0 ? (
-                <div className="d-flex justify-content-center align-items-center flex-grow-1"><Spinner animation="border" variant="primary" /></div>
+                <div className="d-flex justify-content-center align-items-center flex-grow-1">
+                    <Spinner animation="border" variant="primary" />
+                </div>
             ) : (
                 <div className="flex-grow-1 overflow-auto pb-3" style={{ whiteSpace: 'nowrap' }}>
                     <div className="d-inline-flex h-100 align-items-start gap-3">
+                        
+                        {columns.length === 0 && !loading && (
+                            <div className="text-muted p-4">Não há colunas configuradas neste quadro.</div>
+                        )}
+
                         {columns.map(col => {
                             const columnCards = cards.filter(card => card.columnId === col.id);
                             return (
-                                <div key={col.id} className="d-inline-block rounded-3 h-100" onDragOver={(e) => handleDragOver(e, col.id)} onDragLeave={() => setDragOverColId(null)} onDrop={(e) => handleDrop(e, col.id)} style={{ width: '300px', backgroundColor: dragOverColId === col.id ? '#dfe1e6' : '#ebecf0', verticalAlign: 'top', maxHeight: '100%', display: 'flex', flexDirection: 'column', transition: 'background-color 0.2s ease' }}>
+                                <div 
+                                    key={`col-${col.id}`} 
+                                    className="d-inline-block rounded-3 h-100" 
+                                    onDragOver={(e) => handleDragOver(e, col.id)} 
+                                    onDragLeave={() => setDragOverColId(null)} 
+                                    onDrop={(e) => handleDrop(e, col.id)} 
+                                    style={{ 
+                                        width: '300px', 
+                                        backgroundColor: dragOverColId === col.id ? '#dfe1e6' : '#ebecf0', 
+                                        verticalAlign: 'top', 
+                                        maxHeight: '100%', 
+                                        display: 'flex', 
+                                        flexDirection: 'column', 
+                                        transition: 'background-color 0.2s ease' 
+                                    }}
+                                >
                                     <div className="p-3 pb-2 fw-bold d-flex justify-content-between align-items-center">
-                                        <span className="text-dark" style={{ borderLeft: `4px solid ${col.color || '#0079bf'}`, paddingLeft: '8px', fontSize: '0.9rem' }}>{col.name.toUpperCase()}</span>
+                                        <span className="text-dark" style={{ borderLeft: `4px solid ${col.color || '#0079bf'}`, paddingLeft: '8px', fontSize: '0.9rem' }}>
+                                            {col.name.toUpperCase()}
+                                        </span>
                                         <Badge bg="secondary" pill>{columnCards.length}</Badge>
                                     </div>
                                     <div className="p-2 overflow-auto flex-grow-1" style={{ whiteSpace: 'normal', minHeight: '150px' }}>
@@ -490,19 +574,28 @@ const KanbanPage = () => {
                                             }
 
                                             return (
-                                                <Card key={card.id} className="mb-2 shadow-sm border-0 rounded-2" style={{ cursor: 'grab', transition: 'background-color 0.2s' }} draggable={true} onDragStart={(e) => handleDragStart(e, card)} onDragEnd={handleDragEnd} onClick={() => handleOpenEdit(card)} onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f4f5f7'} onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}>
+                                                <Card 
+                                                    key={`card-${card.id}`} 
+                                                    className="mb-2 shadow-sm border-0 rounded-2" 
+                                                    style={{ cursor: 'grab', transition: 'background-color 0.2s' }} 
+                                                    draggable={true} 
+                                                    onDragStart={(e) => handleDragStart(e, card)} 
+                                                    onDragEnd={handleDragEnd} 
+                                                    onClick={() => handleOpenEdit(card)} 
+                                                    onMouseOver={(e) => e.currentTarget.style.backgroundColor = '#f4f5f7'} 
+                                                    onMouseOut={(e) => e.currentTarget.style.backgroundColor = '#ffffff'}
+                                                >
                                                     <Card.Body className="p-2 px-3">
                                                         
-                                                        {/* 🟢 RENDEREIZAÇÃO DOS RÓTULOS (BARRINHAS DE COR) */}
                                                         {card.labelsObjects && card.labelsObjects.length > 0 && (
                                                             <div className="d-flex flex-wrap gap-1 mb-2">
                                                                 {card.labelsObjects.map(lbl => (
-                                                                    <div key={lbl.id} style={{ backgroundColor: lbl.color || '#0079bf', height: '8px', width: '40px', borderRadius: '4px' }} title={lbl.name}></div>
+                                                                    <div key={`lbl-${card.id}-${lbl.id}`} style={{ backgroundColor: lbl.color || '#0079bf', height: '8px', width: '40px', borderRadius: '4px' }} title={lbl.name}></div>
                                                                 ))}
                                                             </div>
                                                         )}
 
-                                                        <Card.Title className="h6 mb-2 fw-bold" style={{ fontSize: '0.95rem', color: '#0052cc' }}>{card.title || 'Teste'}</Card.Title>
+                                                        <Card.Title className="h6 mb-2 fw-bold" style={{ fontSize: '0.95rem', color: '#0052cc' }}>{card.title || 'Sem Título'}</Card.Title>
                                                         <div className="d-flex justify-content-between align-items-center mb-2">
                                                             <span style={{ fontSize: '0.85rem', color: '#172b4d', fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                                 <i className="bi bi-person-circle text-teal me-1" style={{ color: '#00b8d9' }}></i>
@@ -540,10 +633,11 @@ const KanbanPage = () => {
                 </div>
             )}
 
+            {/* MODAL DE EDIÇÃO */}
             <Modal show={showEditModal} onHide={() => setShowEditModal(false)} centered size="lg" backdrop="static">
                 <Modal.Header closeButton closeVariant="white" style={{ backgroundColor: '#0052cc', color: 'white', borderBottom: 'none' }}>
                     <Modal.Title className="fw-bold fs-5">
-                        {editingCard?.title || 'Novo Atendimento'}
+                        {editingCard?.title || 'Detalhes do Card'}
                         <div className="fw-normal" style={{ fontSize: '0.75rem', marginTop: '4px', opacity: 0.8 }}><i className="bi bi-kanban me-1"></i> em <Badge bg="light" text="dark" className="ms-1">{columns.find(c => c.id === Number(editingCard?.columnId))?.name || 'Etapa'}</Badge></div>
                     </Modal.Title>
                 </Modal.Header>
@@ -651,14 +745,13 @@ const KanbanPage = () => {
                                             </div>
                                         </div>
 
-                                        {/* 🟢 SEÇÃO DE RÓTULOS (NO MODAL) */}
                                         <Form.Group className="mb-4">
                                             <Form.Label className="fw-bold text-muted small mb-1"><i className="bi bi-tags me-1"></i> RÓTULOS</Form.Label>
                                             <div className="d-flex flex-wrap gap-2 align-items-center">
                                                 
                                                 {editingCard.labels?.map(lbl => (
                                                     <Badge 
-                                                        key={lbl.id} 
+                                                        key={`lbl-edit-${lbl.id}`} 
                                                         style={{ backgroundColor: lbl.color || '#0079bf', cursor: 'pointer', padding: '6px 10px' }} 
                                                         onClick={() => handleToggleLabel(lbl)}
                                                         title="Clique para remover"
@@ -677,7 +770,7 @@ const KanbanPage = () => {
                                                         {boardLabels.map(lbl => {
                                                             const isActive = editingCard.labels?.some(l => l.id === lbl.id);
                                                             return (
-                                                                <Dropdown.Item key={lbl.id} onClick={() => handleToggleLabel(lbl)} className="d-flex align-items-center justify-content-between py-2">
+                                                                <Dropdown.Item key={`lbl-drop-${lbl.id}`} onClick={() => handleToggleLabel(lbl)} className="d-flex align-items-center justify-content-between py-2">
                                                                     <div className="d-flex align-items-center">
                                                                         <span style={{ display: 'inline-block', width: '14px', height: '14px', backgroundColor: lbl.color || '#ccc', borderRadius: '4px', marginRight: '10px' }}></span>
                                                                         <span className="fw-medium text-dark">{lbl.name}</span>
@@ -747,7 +840,7 @@ const KanbanPage = () => {
                                             const itemName = item.text || item.title || "";
                                             const produtoOriginal = produtosLista.find(p => p.nome === itemName);
                                             return (
-                                                <ListGroup.Item key={item.id} className="d-flex justify-content-between align-items-center px-2 py-3 border-bottom">
+                                                <ListGroup.Item key={`chk-${item.id}`} className="d-flex justify-content-between align-items-center px-2 py-3 border-bottom">
                                                     <Form.Check type="checkbox" id={`check-${item.id}`} label={<div className="d-flex align-items-center ms-2"><span style={{ textDecoration: item.isCompleted ? 'line-through' : 'none', color: item.isCompleted ? '#adb5bd' : '#172b4d', fontWeight: '500' }}>{itemName}</span>{produtoOriginal && produtoOriginal.preco && <Badge bg="success" className="ms-2 fw-normal">{formatCurrency(produtoOriginal.preco)}</Badge>}</div>} checked={item.isCompleted} onChange={() => handleToggleChecklist(item)} />
                                                     <Button variant="light" size="sm" className="text-danger border-0" onClick={() => handleDeleteChecklist(item.id)}><i className="bi bi-trash"></i></Button>
                                                 </ListGroup.Item>
