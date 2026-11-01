@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Spinner, Badge, Button } from 'react-bootstrap';
+import { Spinner, Button } from 'react-bootstrap';
 import api from '../../services/api';
 import MessageBubble from './ChatWindowModule/MessageBubble';
 import MessageInput from './ChatWindowModule/MessageInput';
@@ -7,54 +7,53 @@ import MediaModal from './ChatWindowModule/MediaModal';
 import ChatHeader from './ChatWindowModule/ChatHeader';
 import ContactInfoPanel from './ChatWindowModule/ContactInfoPanel';
 
-// 🟢 HELPER DE PERMISSÃO FRONTEND
 const checkPermission = (permKey) => {
     try {
         const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
         if (adminInfo.id_usuario === 'DONO' || adminInfo.role === 'ADMIN') return true;
-        const permissoes = adminInfo.permissoes || []; // Ajuste caso seu array de permissões tenha outro nome
-        return permissoes.includes(permKey);
-    } catch (e) {
-        return false;
-    }
+        return (adminInfo.permissoes || []).includes(permKey);
+    } catch (e) { return false; }
 };
 
 const ChatWindow = ({ selectedChat, onBack }) => {
     const [messages, setMessages] = useState([]);
+    const [activeTicket, setActiveTicket] = useState(null);
     const [loading, setLoading] = useState(false);
-    const [editingMsgId, setEditingMsgId] = useState(null);
-
+    
     const [modalShow, setModalShow] = useState(false);
     const [modalData, setModalData] = useState({ url: '', type: '' });
-
-    const [aiModalShow, setAiModalShow] = useState(false);
-    const [aiLoading, setAiLoading] = useState(false);
-    const [aiResult, setAiResult] = useState('');
-
     const [showInfoPanel, setShowInfoPanel] = useState(false);
 
     const messagesEndRef = useRef(null);
     const inputRef = useRef(null);
     const fileInputRef = useRef(null);
 
-    // 🟢 IDENTIFICAÇÃO DE STATUS E PERMISSÕES
-    const isPendente = selectedChat?.status === 'pendentes';
-    const isBot = selectedChat?.status === 'bot';
-    
-    // Verifica se o usuário logado tem permissão para ENVIAR mensagens
     const canSend = checkPermission('WHATSAPP_SEND');
-
-    const getBackendUrl = () => {
-        return api.defaults.baseURL ? api.defaults.baseURL.replace('/api', '') : 'http://localhost:5000';
-    };
+    // Se não há ticket aberto/pendente, consideramos que precisa iniciar atendimento
+    const requiresTicket = !activeTicket;
 
     const fetchMessages = useCallback(async () => {
-        if (!selectedChat) return;
+        if (!selectedChat?.number) return;
+        
         try {
-            const { data } = await api.get(`/whatsapp/chats/${selectedChat.jid}`);
-            setMessages(data);
+            // 1. Puxa os tickets do Whazing para esse número
+            const { data: tickets } = await api.post('/kanban/whazing/tickets', { 
+                number: selectedChat.number 
+            });
+            
+            // 2. Encontra um ticket ativo (open ou pending)
+            const currentTicket = tickets.find(t => t.status === 'open' || t.status === 'pending');
+            setActiveTicket(currentTicket || null);
+
+            // 3. Se houver ticket, puxa as mensagens
+            if (currentTicket) {
+                const { data: msgs } = await api.get(`/kanban/whazing/tickets/${currentTicket.id}/messages`);
+                setMessages(msgs);
+            } else {
+                setMessages([]);
+            }
         } catch (error) {
-            console.error("Erro ao carregar mensagens:", error);
+            console.error("Erro ao carregar mensagens do Whazing:", error);
         }
     }, [selectedChat]);
 
@@ -63,135 +62,82 @@ const ChatWindow = ({ selectedChat, onBack }) => {
             setLoading(true);
             fetchMessages().finally(() => setLoading(false));
 
-            const interval = setInterval(() => {
-                if (!editingMsgId) fetchMessages();
-            }, 5000);
+            // Polling para mensagens novas
+            const interval = setInterval(fetchMessages, 5000);
             return () => clearInterval(interval);
         }
-    }, [selectedChat, editingMsgId, fetchMessages]);
+    }, [selectedChat, fetchMessages]);
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
-    const openMedia = (content, type) => {
-        const fullUrl = getPureUrl(content);
-        if (!fullUrl) return;
-        setModalData({ url: fullUrl, type: type });
-        setModalShow(true);
-    };
-
-    const handleAnalyzeAI = async (msg) => {
-        setAiResult('');
-        setAiLoading(true);
-        setAiModalShow(true); 
-        
-        try {
-            const { data } = await api.post(`/whatsapp/chats/${selectedChat.jid}/messages/${msg.whatsappId}/ai`);
-            setAiResult(data.result);
-        } catch (error) {
-            setAiResult(error.response?.data?.message || 'Ocorreu um erro ao processar a IA.');
-        } finally {
-            setAiLoading(false);
-        }
-    };
-
-    const handleTranscribeAudio = async (msgId) => {
-        const { data } = await api.post(`/whatsapp/chats/${selectedChat.jid}/messages/${msgId}/ai`);
-        return data.result;
-    };
-
-    const getPureUrl = (content) => {
-        if (!content) return '';
-        const backendUrl = getBackendUrl();
-        const cleanText = content.replace(/\\n/g, '\n').replace(/\[.*?\]/g, '').trim();
-        const firstLine = cleanText.split('\n')[0];
-        const urlPart = firstLine.split(' ').find(part => part.startsWith('/uploads/') || part.startsWith('http'));
-        
-        if (!urlPart) return '';
-        return urlPart.startsWith('http') ? urlPart : `${backendUrl}${urlPart}`;
-    };
-
     const handleAssumirAtendimento = async () => {
-        const adminInfo = JSON.parse(localStorage.getItem('adminInfo') || '{}');
-        const roleUsuario = adminInfo.role || 'USER';
-        const meuId = (adminInfo.id_usuario === 'DONO' || roleUsuario === 'ADMIN') ? 0 : Number(adminInfo.id_usuario || -1);
-
         try {
-            await api.put(`/whatsapp/chats/${selectedChat.jid}/status`, { 
-                status: 'atendimento', 
-                responsavelId: meuId 
-            });
-            window.location.reload(); 
+            setLoading(true);
+            // 🟢 Cria um novo ticket (inicia o atendimento na fila)
+            await api.post('/kanban/whazing/tickets/create', { number: selectedChat.number });
+            await fetchMessages();
         } catch (error) {
-            console.error("Erro ao assumir atendimento:", error);
+            console.error("Erro ao iniciar atendimento:", error);
+            alert("Erro ao iniciar atendimento. Verifique se as filas estão configuradas no CRM.");
+        } finally {
+            setLoading(false);
         }
     };
 
     const handleSendMessage = async (text, file) => {
-        if (isPendente || !canSend) return; // Trava dupla de segurança
+        if (requiresTicket || !canSend) return;
 
-        if (editingMsgId) {
-            const msgId = editingMsgId;
-            setEditingMsgId(null);
-            setMessages(prev => prev.map(m => m.whatsappId === msgId ? { ...m, conteudo: text } : m));
+        if (text) {
+            const tempMsg = { 
+                id: 'temp-' + Date.now(), 
+                body: text, 
+                fromMe: true, 
+                createdAt: new Date().toISOString(),
+                mediaType: 'text'
+            };
+            setMessages(prev => [...prev, tempMsg]);
+            
             try {
-                await api.put(`/whatsapp/chats/${selectedChat.jid}/messages/${msgId}`, { newText: text });
-            } catch (error) {
+                // 🟢 Dispara a mensagem pela rota do Whazing
+                await api.post('/kanban/whazing/message', { 
+                    number: selectedChat.number, 
+                    text: text 
+                });
                 fetchMessages();
-            }
-        } else if (file) {
-            const tempMsg = { id: Date.now(), whatsappId: 'temp-' + Date.now(), conteudo: `⏳ Enviando: ${file.name}`, fromMe: true, data_envio: new Date().toISOString(), tipo: 'document' };
-            setMessages(prev => [...prev, tempMsg]);
-            const formData = new FormData();
-            formData.append('file', file);
-            formData.append('phone', selectedChat.jid);
-            if (text) formData.append('caption', text);
-            try {
-                await api.post('/whatsapp/chats/send-media', formData);
             } catch (error) {
                 setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
-            }
-        } else {
-            const tempMsg = { id: Date.now(), whatsappId: 'temp-' + Date.now(), conteudo: text, fromMe: true, data_envio: new Date().toISOString(), tipo: 'text' };
-            setMessages(prev => [...prev, tempMsg]);
-            try {
-                await api.post('/whatsapp/chats/send', { phone: selectedChat.jid, message: text });
-            } catch (error) {
-                setMessages(prev => prev.filter(m => m.id !== tempMsg.id));
+                alert("Erro ao enviar mensagem.");
             }
         }
+        
+        // Lógica de arquivo (file) precisará de uma rota /upload do seu backend futuramente
     };
 
-    const handleOpenContactInfo = () => {
-        setShowInfoPanel(true);
-    };
+    const getPureUrl = (content) => content; // Whazing geralmente já envia a URL pronta (mediaUrl)
 
     if (!selectedChat) return (
         <div className="h-100 d-flex flex-column align-items-center justify-content-center text-muted" style={{ backgroundColor: 'var(--bg-main, #f8fafc)' }}>
             <i className="bi bi-whatsapp" style={{ fontSize: '4rem', opacity: 0.1 }}></i>
-            <h4 className="mt-3 fw-bold" style={{ color: 'var(--text-secondary)' }}>Ararinha CRM</h4>
+            <h4 className="mt-3 fw-bold">Ararinha CRM</h4>
             <p>Selecione um contato para iniciar.</p>
         </div>
     );
 
     return (
-        <div className="d-flex flex-column h-100 shadow-sm" style={{ backgroundColor: 'var(--bg-sidebar, #ffffff)', transition: 'background-color 0.2s ease' }}>
+        <div className="d-flex flex-column h-100 shadow-sm" style={{ backgroundColor: 'var(--bg-sidebar, #ffffff)' }}>
             
             <ChatHeader 
                 selectedChat={selectedChat}
-                isPendente={isPendente}
+                isPendente={activeTicket?.status === 'pending'}
                 onBack={onBack}
-                onInfoClick={handleOpenContactInfo}
+                onInfoClick={() => setShowInfoPanel(true)}
             />
 
             <div className="flex-grow-1 p-3 overflow-auto chat-container" style={{ 
-                backgroundColor: 'var(--chat-bg)',
-                backgroundImage: 'var(--chat-bg-img)',
-                backgroundSize: 'cover', 
-                backgroundRepeat: 'no-repeat',
-                backgroundPosition: 'center',
-                backgroundAttachment: 'fixed' 
+                backgroundColor: 'var(--chat-bg)', backgroundImage: 'var(--chat-bg-img)',
+                backgroundSize: 'cover', backgroundAttachment: 'fixed' 
             }}>
                 {loading && messages.length === 0 ? (
                     <div className="text-center mt-5"><Spinner animation="border" variant="success" /></div>
@@ -200,123 +146,43 @@ const ChatWindow = ({ selectedChat, onBack }) => {
                         <MessageBubble
                             key={msg.id}
                             msg={msg}
-                            canSend={canSend} // 🟢 Passando a permissão para a bolha
-                            onEdit={(m) => setEditingMsgId(m.whatsappId)}
-                            onDelete={(id) => api.delete(`/whatsapp/chats/${selectedChat.jid}/messages/${id}`).then(() => fetchMessages())}
-                            getPureUrl={getPureUrl}
-                            openMedia={openMedia}
-                            onAnalyzeAI={handleAnalyzeAI}
-                            onTranscribeAudio={handleTranscribeAudio}
+                            canSend={canSend}
+                            openMedia={(url, type) => { setModalData({url, type}); setModalShow(true); }}
                         />
                     ))
                 )}
                 <div ref={messagesEndRef} />
             </div>
 
-            {/* 🟢 FEEDBACK VISUAL SE O BOT ESTIVER ATENDENDO */}
-            {isBot && (
-                <div className="bg-info bg-opacity-10 border-top border-info p-2 d-flex justify-content-between align-items-center shadow-sm">
-                    <span className="text-info fw-bold small ms-2">
-                        <i className="bi bi-robot fs-5 me-2 align-middle"></i>
-                        A Inteligência Artificial está conversando com este cliente.
+            {/* SE O TICKET AINDA NÃO EXISTE OU FOI FECHADO */}
+            {requiresTicket ? (
+                <div className="bg-warning bg-opacity-10 border-top border-warning p-3 d-flex justify-content-between align-items-center shadow-sm">
+                    <span className="text-dark fw-bold small ms-2">
+                        <i className="bi bi-person-lines-fill fs-5 me-2 align-middle"></i>
+                        Este contato não possui um atendimento ativo.
                     </span>
-                    {canSend && ( // Só mostra o botão de assumir se tiver permissão de enviar mensagem
-                        <Button variant="info" size="sm" className="fw-bold text-white shadow-sm" onClick={handleAssumirAtendimento}>
-                            <i className="bi bi-person-fill me-1"></i> Assumir
+                    {canSend && (
+                        <Button variant="success" size="sm" className="fw-bold shadow-sm" onClick={handleAssumirAtendimento}>
+                            <i className="bi bi-headset me-1"></i> Iniciar Atendimento
                         </Button>
                     )}
                 </div>
-            )}
-
-            {/* 🟢 CONTROLE DO INPUT DE MENSAGENS COM BASE NAS PERMISSÕES */}
-            {isPendente ? (
-                <div 
-                    className="p-3 text-center d-flex flex-column justify-content-center align-items-center" 
-                    style={{ backgroundColor: 'var(--bg-sidebar)', borderTop: '1px solid var(--border-color)', color: 'var(--text-secondary)', minHeight: '70px' }}
-                >
-                    <div className="d-flex align-items-center fw-bold opacity-75">
-                        <i className="bi bi-lock-fill fs-4 me-2 text-warning"></i>
-                        <span>Inicie o atendimento pela barra lateral para interagir com este contato.</span>
-                    </div>
-                </div>
             ) : !canSend ? (
-                <div 
-                    className="p-3 text-center d-flex flex-column justify-content-center align-items-center" 
-                    style={{ backgroundColor: 'var(--bg-sidebar)', borderTop: '1px solid var(--border-color)', color: 'var(--text-secondary)', minHeight: '70px' }}
-                >
-                    <div className="d-flex align-items-center fw-bold opacity-75">
-                        <i className="bi bi-eye-fill fs-4 me-2 text-primary"></i>
-                        <span>Modo Leitura. Você não possui permissão para enviar mensagens.</span>
-                    </div>
+                <div className="p-3 text-center border-top text-muted bg-light">
+                    <i className="bi bi-eye-fill fs-4 me-2 text-primary"></i>
+                    <span className="fw-bold">Modo Leitura.</span>
                 </div>
             ) : (
-                <div style={{ backgroundColor: 'var(--bg-sidebar)' }}>
-                    <MessageInput
-                        onSendMessage={handleSendMessage}
-                        editingMsg={messages.find(m => m.whatsappId === editingMsgId)}
-                        onCancelEdit={() => setEditingMsgId(null)}
-                        inputRef={inputRef}
-                        fileInputRef={fileInputRef}
-                        jid={selectedChat.jid}
-                    />
-                </div>
+                <MessageInput
+                    onSendMessage={handleSendMessage}
+                    inputRef={inputRef}
+                    fileInputRef={fileInputRef}
+                    number={selectedChat.number}
+                />
             )}
 
-            <MediaModal
-                show={modalShow}
-                onHide={() => setModalShow(false)}
-                mediaUrl={modalData.url}
-                mediaType={modalData.type}
-            />
-
-            {aiModalShow && (
-                <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1055 }}>
-                    <div className="modal-dialog modal-dialog-centered modal-dialog-scrollable">
-                        <div className="modal-content border-0 shadow">
-                            <div className="modal-header text-white border-0" style={{ backgroundColor: '#10a37f' }}>
-                                <h5 className="modal-title d-flex align-items-center fw-bold">
-                                    <i className="bi bi-robot me-2 fs-4"></i> Análise com IA Groq
-                                </h5>
-                                <button type="button" className="btn-close btn-close-white shadow-none" onClick={() => setAiModalShow(false)}></button>
-                            </div>
-                            <div className="modal-body p-4" style={{ minHeight: '150px' }}>
-                                {aiLoading ? (
-                                    <div className="d-flex flex-column align-items-center justify-content-center h-100 text-muted">
-                                        <Spinner animation="grow" style={{ color: '#10a37f' }} className="mb-3" />
-                                        <span>A Inteligência Artificial está analisando o arquivo...</span>
-                                    </div>
-                                ) : (
-                                    <div style={{ whiteSpace: 'pre-wrap', fontSize: '1rem', color: 'var(--text-primary)' }}>
-                                        {aiResult}
-                                    </div>
-                                )}
-                            </div>
-                            <div className="modal-footer bg-light border-0">
-                                <button type="button" className="btn btn-secondary shadow-sm" onClick={() => setAiModalShow(false)}>Fechar</button>
-                                {!aiLoading && (
-                                    <button type="button" className="btn shadow-sm text-white" style={{ backgroundColor: '#10a37f' }} onClick={() => navigator.clipboard.writeText(aiResult)}>
-                                        <i className="bi bi-copy me-2"></i>Copiar Texto
-                                    </button>
-                                )}
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
-
-            <ContactInfoPanel 
-                show={showInfoPanel} 
-                onHide={() => setShowInfoPanel(false)} 
-                contact={selectedChat} 
-            />
-
-            <style>{`
-                :root { --chat-bg: #e5ddd5; --chat-bg-img: url("/backgroundlight.png"); }
-                body.dark-mode { --chat-bg: #0b141a; --chat-bg-img: url("/backgrounddark.png"); }
-                .chat-container::-webkit-scrollbar { width: 6px; }
-                .chat-container::-webkit-scrollbar-thumb { background-color: rgba(0,0,0,0.2); border-radius: 10px; }
-                .chat-container { position: relative; }
-            `}</style>
+            <MediaModal show={modalShow} onHide={() => setModalShow(false)} mediaUrl={modalData.url} mediaType={modalData.type} />
+            <ContactInfoPanel show={showInfoPanel} onHide={() => setShowInfoPanel(false)} contact={selectedChat} />
         </div>
     );
 };

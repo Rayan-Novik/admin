@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Modal, Button, Form, Row, Col, Alert, Spinner, Badge } from 'react-bootstrap';
 import { FaCashRegister, FaCheckCircle, FaExclamationTriangle, FaTimesCircle, FaCalculator } from 'react-icons/fa';
-import { abrirCaixa, conferirCaixa, fecharCaixa } from './pdvService';
+import { abrirCaixa, conferirCaixa, fecharCaixa, getPdvConfig } from './pdvService';
 import api from '../../../services/api'; 
 
 export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
@@ -20,8 +20,10 @@ export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
     const [authEmail, setAuthEmail] = useState('');
     const [authSenha, setAuthSenha] = useState('');
     
-    // Estados para Fechamento
-    const [valores, setValores] = useState({ DINHEIRO: '', PIX: '', CREDITO: '', DEBITO: '' });
+    // Estados para Fechamento Dinâmico com Formas SEFAZ
+    const [formasFechamento, setFormasFechamento] = useState([]);
+    const [loadingFormas, setLoadingFormas] = useState(false);
+    const [valores, setValores] = useState({});
     const [conferencia, setConferencia] = useState(null); 
     const [observacoes, setObservacoes] = useState('');
     
@@ -30,7 +32,7 @@ export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
     const [loading, setLoading] = useState(false);
     const [authError, setAuthError] = useState('');
 
-    // 🟢 Busca a logo quando o modal é aberto
+    // Busca a logo e as formas SEFAZ quando o modal é aberto
     useEffect(() => {
         if (isOpen) {
             const fetchLogo = async () => {
@@ -44,14 +46,82 @@ export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
                 }
             };
             fetchLogo();
+
+            if (mode === 'fechar') {
+                carregarFormasFechamento();
+            }
         }
-    }, [isOpen]);
+    }, [isOpen, mode]);
+
+    const carregarFormasFechamento = async () => {
+        setLoadingFormas(true);
+        try {
+            const { data } = await api.get('/fiscal/formas-pagamento');
+            let lista = [];
+            const vistas = new Set();
+            if (Array.isArray(data) && data.length > 0) {
+                data.forEach(f => {
+                    const desc = (f.descricao || '').trim();
+                    if (desc && !vistas.has(desc.toLowerCase())) {
+                        vistas.add(desc.toLowerCase());
+                        lista.push({
+                            id: f.id,
+                            codigo_sefaz: String(f.codigo_sefaz || '99').padStart(2, '0'),
+                            descricao: desc
+                        });
+                    }
+                });
+            }
+            if (lista.length === 0) {
+                lista = [
+                    { id: 'def_01', codigo_sefaz: '01', descricao: 'Dinheiro' },
+                    { id: 'def_17', codigo_sefaz: '17', descricao: 'PIX' },
+                    { id: 'def_03', codigo_sefaz: '03', descricao: 'Cartão de Crédito' },
+                    { id: 'def_04', codigo_sefaz: '04', descricao: 'Cartão de Débito' }
+                ];
+            }
+            setFormasFechamento(lista);
+            setValores(prev => {
+                const inicial = { ...prev };
+                lista.forEach(forma => {
+                    if (inicial[forma.descricao] === undefined) {
+                        inicial[forma.descricao] = '';
+                    }
+                });
+                return inicial;
+            });
+        } catch (err) {
+            console.error('Erro ao carregar formas de pagamento SEFAZ:', err);
+            const padrao = [
+                { id: 'def_01', codigo_sefaz: '01', descricao: 'Dinheiro' },
+                { id: 'def_17', codigo_sefaz: '17', descricao: 'PIX' },
+                { id: 'def_03', codigo_sefaz: '03', descricao: 'Cartão de Crédito' },
+                { id: 'def_04', codigo_sefaz: '04', descricao: 'Cartão de Débito' }
+            ];
+            setFormasFechamento(padrao);
+        } finally {
+            setLoadingFormas(false);
+        }
+    };
+
+    const getEstiloForma = (codigo) => {
+        const cod = String(codigo || '').padStart(2, '0');
+        if (cod === '01') return { cor: '#16a34a', bg: 'rgba(22, 163, 74, 0.1)', icone: 'bi bi-cash-stack', label: 'Dinheiro em Gaveta' };
+        if (cod === '17') return { cor: '#0ea5e9', bg: 'rgba(14, 165, 233, 0.1)', icone: 'bi bi-qr-code', label: 'PIX / Instantâneo' };
+        if (cod === '03') return { cor: '#6366f1', bg: 'rgba(99, 102, 241, 0.1)', icone: 'bi bi-credit-card-fill', label: 'Cartão de Crédito' };
+        if (cod === '04') return { cor: '#8b5cf6', bg: 'rgba(139, 92, 246, 0.1)', icone: 'bi bi-credit-card', label: 'Cartão de Débito' };
+        if (cod === '10' || cod === '11') return { cor: '#f59e0b', bg: 'rgba(245, 158, 11, 0.1)', icone: 'bi bi-ticket-perforated', label: 'Vale / Voucher' };
+        if (cod === '15') return { cor: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)', icone: 'bi bi-file-earmark-text', label: 'Boleto Bancário' };
+        return { cor: '#64748b', bg: 'rgba(100, 116, 139, 0.1)', icone: 'bi bi-wallet2', label: 'Outros Meios' };
+    };
+
+    const totalInformado = Object.values(valores || {}).reduce((acc, v) => acc + (Number(v) || 0), 0);
 
     const handleReset = () => {
         setSaldoInicial('');
         setAuthEmail('');
         setAuthSenha('');
-        setValores({ DINHEIRO: '', PIX: '', CREDITO: '', DEBITO: '' });
+        setValores({});
         setConferencia(null);
         setObservacoes('');
         setStep(1);
@@ -163,7 +233,14 @@ export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
     };
 
     return (
-        <Modal show={isOpen} onHide={handleClose} centered backdrop="static" size={mode === 'fechar' && step === 2 ? 'lg' : 'md'} contentClassName="modal-dark-fix border-0 shadow-lg rounded-4 overflow-hidden">
+        <Modal 
+            show={isOpen} 
+            onHide={handleClose} 
+            centered 
+            backdrop="static" 
+            size={mode === 'fechar' ? 'lg' : 'md'} 
+            contentClassName="modal-dark-fix border-0 shadow-lg rounded-4 overflow-hidden"
+        >
             
             {/* 🟢 HEADER ESTILO TELA DE LOGIN BEM BONITA E CENTRALIZADA */}
             <Modal.Header closeButton className="border-0 pt-4 pb-0 d-flex flex-column align-items-center position-relative" style={{ backgroundColor: 'var(--bg-main)' }}>
@@ -201,6 +278,23 @@ export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
                     <Form onSubmit={handleAbrirComAutenticacao} className="mt-2">
                         
                         {authError && <Alert variant="danger" className="border-0 py-2 small shadow-sm">{authError}</Alert>}
+
+                        <div className="d-flex justify-content-between align-items-center mb-3 px-1">
+                            <span className="badge bg-primary bg-opacity-10 text-primary px-3 py-1.5 rounded-pill fw-bold" style={{ fontSize: '12px' }}>
+                                Terminal: {getPdvConfig().nome_caixa || `Caixa ${String(getPdvConfig().numero_caixa || 1).padStart(2, '0')}`}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    onClose?.();
+                                    navigate('/admin/caixas');
+                                }}
+                                className="btn btn-link btn-sm text-decoration-none fw-bold p-0 text-primary"
+                                style={{ fontSize: '12px' }}
+                            >
+                                Gerenciar / Cadastrar Caixas →
+                            </button>
+                        </div>
 
                         <div className="p-4 bg-primary bg-opacity-10 border border-primary border-opacity-25 rounded-4 mb-4 text-center shadow-sm">
                             <Form.Label className="small fw-bold text-uppercase text-primary ls-1 mb-2 d-block">Saldo em Gaveta (Fundo de Troco)</Form.Label>
@@ -265,54 +359,81 @@ export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
                 {mode === 'fechar' && step === 1 && (
                     <div className="fade-in mt-2">
                         <Alert variant="warning" className="small border-0 shadow-sm rounded-4 d-flex align-items-center gap-3 mb-4 p-3">
-                            <FaExclamationTriangle size={28} className="text-warning opacity-75"/>
-                            <div>Conte os valores da gaveta e da maquininha <b>fisicamente</b> antes de digitar. O sistema fará o cruzamento dos dados!</div>
+                            <FaExclamationTriangle size={28} className="text-warning opacity-75 flex-shrink-0"/>
+                            <div>Conte os valores da gaveta e da maquininha <b>fisicamente</b> antes de digitar. O sistema fará o cruzamento com todas as vendas registradas!</div>
                         </Alert>
                         
-                        <div className="p-4 rounded-4 border shadow-sm mb-4" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}>
-                            <Row className="g-4">
-                                <Col md={6}>
-                                    <Form.Group>
-                                        <Form.Label className="fw-bold small mb-2 text-uppercase ls-1" style={{ color: '#16a34a' }}><i className="bi bi-cash me-1"></i> Dinheiro</Form.Label>
-                                        <div className="input-group input-group-lg">
-                                            <span className="input-group-text bg-transparent border-end-0 text-muted border-secondary border-opacity-25 fs-6">R$</span>
-                                            <Form.Control type="number" inputMode="decimal" placeholder="0.00" value={valores.DINHEIRO} onChange={e => setValores({...valores, DINHEIRO: e.target.value})} className="form-dark-input border-start-0 border-secondary border-opacity-25 shadow-none fw-bolder fs-5" />
-                                        </div>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={6}>
-                                    <Form.Group>
-                                        <Form.Label className="fw-bold small mb-2 text-uppercase ls-1" style={{ color: '#0ea5e9' }}><i className="bi bi-qr-code me-1"></i> Pix</Form.Label>
-                                        <div className="input-group input-group-lg">
-                                            <span className="input-group-text bg-transparent border-end-0 text-muted border-secondary border-opacity-25 fs-6">R$</span>
-                                            <Form.Control type="number" inputMode="decimal" placeholder="0.00" value={valores.PIX} onChange={e => setValores({...valores, PIX: e.target.value})} className="form-dark-input border-start-0 border-secondary border-opacity-25 shadow-none fw-bolder fs-5" />
-                                        </div>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={6}>
-                                    <Form.Group>
-                                        <Form.Label className="fw-bold small mb-2 text-uppercase ls-1" style={{ color: '#6366f1' }}><i className="bi bi-credit-card-fill me-1"></i> Crédito</Form.Label>
-                                        <div className="input-group input-group-lg">
-                                            <span className="input-group-text bg-transparent border-end-0 text-muted border-secondary border-opacity-25 fs-6">R$</span>
-                                            <Form.Control type="number" inputMode="decimal" placeholder="0.00" value={valores.CREDITO} onChange={e => setValores({...valores, CREDITO: e.target.value})} className="form-dark-input border-start-0 border-secondary border-opacity-25 shadow-none fw-bolder fs-5" />
-                                        </div>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={6}>
-                                    <Form.Group>
-                                        <Form.Label className="fw-bold small mb-2 text-uppercase ls-1" style={{ color: 'var(--text-secondary)' }}><i className="bi bi-credit-card me-1"></i> Débito</Form.Label>
-                                        <div className="input-group input-group-lg">
-                                            <span className="input-group-text bg-transparent border-end-0 text-muted border-secondary border-opacity-25 fs-6">R$</span>
-                                            <Form.Control type="number" inputMode="decimal" placeholder="0.00" value={valores.DEBITO} onChange={e => setValores({...valores, DEBITO: e.target.value})} className="form-dark-input border-start-0 border-secondary border-opacity-25 shadow-none fw-bolder fs-5" />
-                                        </div>
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                        </div>
-                        
-                        <Button variant="danger" className="w-100 py-3 fw-bold rounded-pill shadow-lg border-0 d-flex justify-content-center align-items-center" onClick={handleConferir} disabled={loading} style={{ fontSize: '15px', letterSpacing: '0.5px' }}>
-                            <FaCalculator className="me-2"/> CONFERIR VALORES
-                        </Button>
+                        {loadingFormas ? (
+                            <div className="text-center py-5">
+                                <Spinner animation="border" variant="primary" />
+                                <div className="mt-2 text-muted small fw-medium">Carregando formas de pagamento SEFAZ...</div>
+                            </div>
+                        ) : (
+                            <>
+                                <div className="p-4 rounded-4 border shadow-sm mb-4" style={{ backgroundColor: 'var(--bg-sidebar)', borderColor: 'var(--border-color)' }}>
+                                    <div className="d-flex justify-content-between align-items-center mb-3 pb-2 border-bottom border-secondary border-opacity-10">
+                                        <span className="small fw-bold text-uppercase" style={{ color: 'var(--text-secondary)', letterSpacing: '0.5px' }}>
+                                            Formas de Pagamento Cadastradas ({formasFechamento.length})
+                                        </span>
+                                        <Badge bg="primary" className="bg-opacity-10 text-primary border border-primary border-opacity-25 px-2 py-1">
+                                            SEFAZ Integrado
+                                        </Badge>
+                                    </div>
+
+                                    <Row className="g-3">
+                                        {formasFechamento.map(forma => {
+                                            const estilo = getEstiloForma(forma.codigo_sefaz);
+                                            return (
+                                                <Col md={6} key={forma.id || forma.descricao}>
+                                                    <div className="p-3 rounded-3 border h-100" style={{ backgroundColor: 'var(--bg-main)', borderColor: 'var(--border-color)' }}>
+                                                        <Form.Group>
+                                                            <div className="d-flex justify-content-between align-items-center mb-2">
+                                                                <Form.Label className="fw-bold small mb-0 d-flex align-items-center gap-1.5" style={{ color: estilo.cor }}>
+                                                                    <i className={estilo.icone}></i>
+                                                                    <span className="text-truncate" style={{ maxWidth: '170px' }} title={forma.descricao}>
+                                                                        {forma.descricao}
+                                                                    </span>
+                                                                </Form.Label>
+                                                                <span className="badge rounded-pill" style={{ backgroundColor: estilo.bg, color: estilo.cor, fontSize: '10px' }}>
+                                                                    tPag {forma.codigo_sefaz}
+                                                                </span>
+                                                            </div>
+                                                            <div className="input-group">
+                                                                <span className="input-group-text bg-transparent border-end-0 text-muted border-secondary border-opacity-25 fs-6 py-2">R$</span>
+                                                                <Form.Control 
+                                                                    type="number" 
+                                                                    inputMode="decimal" 
+                                                                    placeholder="0.00" 
+                                                                    value={valores[forma.descricao] || ''} 
+                                                                    onChange={e => setValores({ ...valores, [forma.descricao]: e.target.value })} 
+                                                                    className="form-dark-input border-start-0 border-secondary border-opacity-25 shadow-none fw-bolder fs-5 py-2" 
+                                                                />
+                                                            </div>
+                                                        </Form.Group>
+                                                    </div>
+                                                </Col>
+                                            );
+                                        })}
+                                    </Row>
+
+                                    <div className="d-flex justify-content-between align-items-center px-2 pt-3 mt-3 border-top border-secondary border-opacity-10">
+                                        <span className="text-muted small fw-bold text-uppercase">Total Contado em Caixa:</span>
+                                        <span className="fw-bolder fs-5 text-success">R$ {totalInformado.toFixed(2)}</span>
+                                    </div>
+                                </div>
+                                
+                                <Button 
+                                    variant="danger" 
+                                    className="w-100 py-3 fw-bold rounded-pill shadow-lg border-0 d-flex justify-content-center align-items-center" 
+                                    onClick={handleConferir} 
+                                    disabled={loading} 
+                                    style={{ fontSize: '15px', letterSpacing: '0.5px' }}
+                                >
+                                    {loading ? <Spinner size="sm" className="me-2"/> : <FaCalculator className="me-2"/>}
+                                    CONFERIR VALORES
+                                </Button>
+                            </>
+                        )}
                     </div>
                 )}
 
@@ -332,27 +453,38 @@ export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
                             <table className="table table-borderless table-hover mb-0 align-middle text-center small">
                                 <thead style={{ backgroundColor: 'var(--bg-sidebar)', borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
                                     <tr className="text-uppercase" style={{ fontSize: '11px', letterSpacing: '0.5px' }}>
-                                        <th className="py-3 text-start ps-4">Método</th>
+                                        <th className="py-3 text-start ps-4">Forma de Pagamento</th>
                                         <th>Esperado</th>
-                                        <th>Gaveta</th>
+                                        <th>Informado</th>
                                         <th className="pe-3">Diferença</th>
                                     </tr>
                                 </thead>
                                 <tbody style={{ backgroundColor: 'var(--bg-main)' }}>
-                                    {conferencia.conferencia.map((item) => (
-                                        <tr key={item.metodo} style={{ borderBottom: '1px dotted var(--border-color)' }}>
-                                            <td className="fw-bold text-start ps-4 py-3" style={{ color: 'var(--text-primary)' }}>{item.metodo}</td>
-                                            <td style={{ color: 'var(--text-secondary)' }}>R$ {item.esperado.toFixed(2)}</td>
-                                            <td className="fw-bold" style={{ color: 'var(--text-primary)' }}>R$ {item.informado.toFixed(2)}</td>
-                                            <td className={`pe-3 ${item.diferenca === 0 ? 'text-success' : (item.diferenca > 0 ? 'text-primary fw-bold' : 'text-danger fw-bold')}`}>
-                                                {item.diferenca > 0 ? `+ ${item.diferenca.toFixed(2)}` : `${item.diferenca.toFixed(2)}`}
-                                            </td>
-                                        </tr>
-                                    ))}
+                                    {conferencia.conferencia.map((item) => {
+                                        const estilo = getEstiloForma(item.codigo_sefaz);
+                                        return (
+                                            <tr key={item.metodo} style={{ borderBottom: '1px dotted var(--border-color)' }}>
+                                                <td className="fw-bold text-start ps-4 py-3" style={{ color: 'var(--text-primary)' }}>
+                                                    <div className="d-flex align-items-center gap-2">
+                                                        <i className={estilo.icone} style={{ color: estilo.cor }}></i>
+                                                        <span>{item.metodo}</span>
+                                                        <span className="badge rounded-pill" style={{ backgroundColor: estilo.bg, color: estilo.cor, fontSize: '10px' }}>
+                                                            {item.codigo_sefaz}
+                                                        </span>
+                                                    </div>
+                                                </td>
+                                                <td style={{ color: 'var(--text-secondary)' }}>R$ {Number(item.esperado || 0).toFixed(2)}</td>
+                                                <td className="fw-bold" style={{ color: 'var(--text-primary)' }}>R$ {Number(item.informado || 0).toFixed(2)}</td>
+                                                <td className={`pe-3 ${item.diferenca === 0 ? 'text-success' : (item.diferenca > 0 ? 'text-primary fw-bold' : 'text-danger fw-bold')}`}>
+                                                    {item.diferenca > 0 ? `+ ${Number(item.diferenca).toFixed(2)}` : `${Number(item.diferenca).toFixed(2)}`}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                     <tr style={{ backgroundColor: 'var(--bg-sidebar)' }}>
                                         <td colSpan="3" className="text-end pe-3 fw-bold py-3" style={{ color: 'var(--text-secondary)' }}>Saldo de Diferença:</td>
-                                        <td className={`fw-bolder fs-5 pe-3 ${conferencia.divergencia_total < 0 ? 'text-danger' : 'text-success'}`}>
-                                            R$ {conferencia.divergencia_total.toFixed(2)}
+                                        <td className={`fw-bolder fs-5 pe-3 ${conferencia.divergencia_total < 0 ? 'text-danger' : (conferencia.divergencia_total > 0 ? 'text-primary' : 'text-success')}`}>
+                                            R$ {conferencia.divergencia_total > 0 ? `+${conferencia.divergencia_total.toFixed(2)}` : conferencia.divergencia_total.toFixed(2)}
                                         </td>
                                     </tr>
                                 </tbody>
@@ -382,7 +514,7 @@ export default function CaixaModal({ isOpen, mode, onClose, onSuccess }) {
                                 variant={conferencia?.divergencia_total !== 0 ? "danger" : "success"} 
                                 className="w-50 py-3 fw-bold rounded-pill shadow-lg border-0" 
                                 onClick={handleFechar} 
-                                disabled={loading}
+                                disabled={loading} 
                             >
                                 {loading ? <Spinner size="sm"/> : (conferencia?.divergencia_total !== 0 ? 'FECHAR COM DIVERGÊNCIA' : 'CONFIRMAR FECHAMENTO')}
                             </Button>

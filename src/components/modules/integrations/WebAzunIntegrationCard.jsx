@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Modal, Spinner, Badge } from 'react-bootstrap';
 import api from '../../../services/api';
 import { toast } from 'react-toastify';
@@ -8,6 +8,9 @@ const WebAzunIntegrationCard = ({ statusConfigurado, onConfigureClick }) => {
     const [qrCodeData, setQrCodeData] = useState(null);
     const [showQrModal, setShowQrModal] = useState(false);
     const [loadingQr, setLoadingQr] = useState(false);
+    const [qrMessage, setQrMessage] = useState(''); // 🟢 Mensagem de status ("Gerando...")
+
+    const pollingTimeoutRef = useRef(null); // 🟢 Referência para limpar o loop se fechar o modal
 
     // ==========================================
     // 1. CHECAGEM DE STATUS DO WHATSAPP
@@ -36,34 +39,58 @@ const WebAzunIntegrationCard = ({ statusConfigurado, onConfigureClick }) => {
     };
 
     // ==========================================
-    // 2. FUNÇÃO PARA ABRIR E GERAR O QR CODE
+    // 2. FUNÇÃO PARA ABRIR E GERAR O QR CODE COM POLLING
     // ==========================================
-    const handleOpenWhatsAppModal = async (e) => {
+    const fetchQrCode = async () => {
+        try {
+            setLoadingQr(true);
+            const { data } = await api.post('/kanban/whazing/qrcode');
+
+            // 🟢 Se veio o QR Code com sucesso, mostra na tela
+            if (data && (data.qrcode || data.base64)) {
+                setQrCodeData(data.qrcode || data.base64);
+                setQrMessage('');
+                setLoadingQr(false);
+            } 
+            // 🟢 Se o servidor responder que ainda está gerando (Status OPENING)
+            else if (data && data.message) {
+                setQrMessage(data.message); // Exibe: "QR code está sendo gerado..."
+                setQrCodeData(null);
+                
+                // Repete a requisição automaticamente após 3 segundos
+                pollingTimeoutRef.current = setTimeout(() => {
+                    fetchQrCode();
+                }, 3000);
+            } 
+            // 🟢 Se falhou por outro motivo
+            else {
+                setQrCodeData(null);
+                setLoadingQr(false);
+                toast.error("Não foi possível renderizar o QR Code recebido.");
+            }
+        } catch (error) {
+            setQrCodeData(null);
+            setLoadingQr(false);
+            toast.error("Erro ao gerar QR Code do WhatsApp.");
+        }
+    };
+
+    const handleOpenWhatsAppModal = (e) => {
         if (e) e.stopPropagation();
         
         setShowQrModal(true);
 
-        // Se já estiver conectado, apenas mostra o modal de sucesso, não precisa gerar QR Code
-        if (statusWpp === 'CONNECTED') return;
+        // Só gera o QR Code se estiver desconectado
+        if (statusWpp !== 'CONNECTED') {
+            fetchQrCode();
+        }
+    };
 
-        try {
-            setLoadingQr(true);
-            setQrCodeData(null);
-
-            const { data } = await api.post('/kanban/whazing/qrcode');
-
-            if (data && data.qrcode) {
-                setQrCodeData(data.qrcode);
-            } else if (data && data.base64) {
-                setQrCodeData(data.base64);
-            } else {
-                toast.error("Não foi possível renderizar o QR Code recebido.");
-            }
-        } catch (error) {
-            toast.error("Erro ao gerar QR Code do WhatsApp.");
-            setShowQrModal(false);
-        } finally {
-            setLoadingQr(false);
+    const handleCloseModal = () => {
+        setShowQrModal(false);
+        // 🟢 Evita que a requisição continue rodando em loop infinito se o usuário fechar o modal
+        if (pollingTimeoutRef.current) {
+            clearTimeout(pollingTimeoutRef.current);
         }
     };
 
@@ -174,7 +201,7 @@ const WebAzunIntegrationCard = ({ statusConfigurado, onConfigureClick }) => {
             {/* ==========================================
                 🟢 MODAL DO QR CODE / STATUS
             ========================================== */}
-            <Modal show={showQrModal} onHide={() => setShowQrModal(false)} centered backdrop="static">
+            <Modal show={showQrModal} onHide={handleCloseModal} centered backdrop="static">
                 <Modal.Header closeButton className="border-0 pb-0">
                     <Modal.Title className="fs-5 fw-bold"><i className="bi bi-whatsapp text-success me-2"></i>Gerenciar WhatsApp</Modal.Title>
                 </Modal.Header>
@@ -192,9 +219,12 @@ const WebAzunIntegrationCard = ({ statusConfigurado, onConfigureClick }) => {
                             <p className="text-muted small mb-4">Aponte a câmera do seu celular para ler o código abaixo e conectar o CRM.</p>
 
                             {loadingQr ? (
-                                <div className="py-5 d-flex flex-column align-items-center">
+                                <div className="py-5 d-flex flex-column align-items-center px-4">
                                     <Spinner animation="border" variant="success" style={{ width: '3rem', height: '3rem' }} />
-                                    <span className="mt-3 fw-bold text-secondary">Gerando QR Code...</span>
+                                    {/* Exibe a mensagem dinâmica (OPENING) enquanto gira */}
+                                    <span className="mt-3 fw-bold text-secondary text-center">
+                                        {qrMessage ? qrMessage : "Gerando QR Code..."}
+                                    </span>
                                 </div>
                             ) : qrCodeData ? (
                                 <div className="p-3 bg-white border rounded-4 d-inline-block shadow-sm">

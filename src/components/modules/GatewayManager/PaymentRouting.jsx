@@ -24,26 +24,31 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
     const onlineRules = rules.filter(r => !r.method.startsWith('OFFLINE_'));
     const offlineRules = rules.filter(r => r.method.startsWith('OFFLINE_'));
 
-    // 🟢 ESTADO PARA O PERCENTUAL DE SINAL
     const [sinalPercent, setSinalPercent] = useState(100);
     const [savingSinal, setSavingSinal] = useState(false);
+    
+    // 🟢 ESTADO PARA AS FORMAS DE PAGAMENTO DO MÓDULO FISCAL
+    const [formasFiscais, setFormasFiscais] = useState([]);
 
-    // 🟢 BUSCA O VALOR ATUAL DO BANCO DE DADOS QUANDO A TELA CARREGA
     useEffect(() => {
-        const fetchSinalConfig = async () => {
+        const fetchConfigs = async () => {
             try {
-                const res = await api.get('/payment-gateways/config/AGENDAMENTO_SINAL_PERCENT');
-                if (res.data && res.data.valor !== undefined) {
-                    setSinalPercent(Number(res.data.valor));
+                // Busca o Sinal de Agendamento
+                const resSinal = await api.get('/payment-gateways/config/AGENDAMENTO_SINAL_PERCENT');
+                if (resSinal.data && resSinal.data.valor !== undefined) {
+                    setSinalPercent(Number(resSinal.data.valor));
                 }
+
+                // 🟢 Busca as Formas de Pagamento Fiscais cadastradas na Sefaz
+                const resFiscal = await api.get('/fiscal/formas-pagamento');
+                setFormasFiscais(Array.isArray(resFiscal.data) ? resFiscal.data : (resFiscal.data.data || []));
             } catch (error) {
-                // Falha silenciosa, usa 100% como fallback
+                console.error("Erro ao carregar configurações de pagamento:", error);
             }
         };
-        fetchSinalConfig();
+        fetchConfigs();
     }, []);
 
-    // 🟢 FUNÇÃO PARA SALVAR A CONFIGURAÇÃO DE SINAL
     const handleSaveSinal = async () => {
         setSavingSinal(true);
         try {
@@ -61,11 +66,9 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
 
     return (
         <>
-            {/* SEÇÃO 2: ROTEAMENTO ONLINE */}
             <h6 className="fw-bold text-uppercase text-secondary mb-3 small ls-1">2. Pagamentos Online (Site)</h6>
             
             <Row className="g-4 mb-4">
-                {/* CARD GLOBAL */}
                 <Col lg={7}>
                     <Card className="h-100 border-primary shadow-sm bg-primary bg-opacity-10 border-0">
                         <Card.Body className="d-flex flex-column justify-content-center">
@@ -90,7 +93,6 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
                     </Card>
                 </Col>
 
-                {/* 🟢 CARD DE SINAL ANTECIPADO (AGENDAMENTOS) */}
                 <Col lg={5}>
                     <Card className="h-100 border-warning shadow-sm bg-warning bg-opacity-10 border-0">
                         <Card.Body className="d-flex flex-column justify-content-between">
@@ -104,35 +106,20 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
                             <div className="d-flex align-items-center gap-3">
                                 <InputGroup size="sm" className="w-50 shadow-sm rounded-pill overflow-hidden">
                                     <Form.Control 
-                                        type="number" 
-                                        min="0" max="100" 
-                                        value={sinalPercent} 
-                                        onChange={(e) => setSinalPercent(e.target.value)} 
+                                        type="number" min="0" max="100" 
+                                        value={sinalPercent} onChange={(e) => setSinalPercent(e.target.value)} 
                                         className="border-0 bg-white text-center fw-bold text-dark"
                                     />
                                     <InputGroup.Text className="border-0 bg-white text-secondary fw-bold">%</InputGroup.Text>
                                 </InputGroup>
                                 <Button 
-                                    variant="warning" 
-                                    size="sm" 
+                                    variant="warning" size="sm" 
                                     className="rounded-pill fw-bold px-3 text-dark shadow-sm"
-                                    onClick={handleSaveSinal}
-                                    disabled={savingSinal}
+                                    onClick={handleSaveSinal} disabled={savingSinal}
                                 >
                                     {savingSinal ? 'Salvando...' : 'Salvar Regra'}
                                 </Button>
                             </div>
-                            {Number(sinalPercent) < 100 ? (
-                                <small className="text-muted mt-2 d-block" style={{ fontSize: '10px' }}>
-                                    <i className="bi bi-info-circle-fill text-warning me-1"></i>
-                                    O cliente pagará {sinalPercent}% no site e os outros {100 - Number(sinalPercent)}% presencialmente.
-                                </small>
-                            ) : (
-                                <small className="text-muted mt-2 d-block" style={{ fontSize: '10px' }}>
-                                    <i className="bi bi-info-circle-fill text-success me-1"></i>
-                                    Agendamentos só serão confirmados após pagamento do valor integral (100%).
-                                </small>
-                            )}
                         </Card.Body>
                     </Card>
                 </Col>
@@ -143,8 +130,6 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
                     const meta = methodMetadata[rule.method] || { label: rule.method, icon: <FaSync /> };
                     const normalizedMethod = rule.method.replace(/_/g, '');
                     const rawOptions = availableProviders[normalizedMethod] || availableProviders[rule.method] || [];
-
-                    // Filtra os provedores que TÊM a chave conectada (status == true)
                     const connectedOptions = rawOptions.filter(opt => keyStatus[opt.value]);
 
                     return (
@@ -162,8 +147,7 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
                                             </div>
                                         </div>
                                         <Form.Check 
-                                            type="switch"
-                                            checked={rule.is_active}
+                                            type="switch" checked={rule.is_active}
                                             onChange={(e) => onUpdateRule(rule.method, 'is_active', e.target.checked)}
                                             style={{ transform: 'scale(1.2)' }}
                                         />
@@ -171,14 +155,12 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
                                     
                                     <hr className="opacity-10 my-3"/>
 
-                                    <Form.Group>
+                                    <Form.Group className="mb-3">
                                         <div className="d-flex justify-content-between align-items-center mb-1">
                                             <Form.Label className="small text-muted fw-bold text-uppercase mb-0">Processador</Form.Label>
                                             <div 
-                                                className="text-primary small cursor-pointer" 
-                                                title={`Configurar chaves do ${rule.provider}`}
-                                                style={{cursor: 'pointer'}}
-                                                onClick={() => onOpenModal(rule.provider)}
+                                                className="text-primary small cursor-pointer" title={`Configurar chaves do ${rule.provider}`}
+                                                style={{cursor: 'pointer'}} onClick={() => onOpenModal(rule.provider)}
                                             >
                                                 <FaCog className="me-1" /> Configurar
                                             </div>
@@ -188,29 +170,41 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
                                             value={rule.provider || ''} 
                                             onChange={(e) => onUpdateRule(rule.method, 'provider', e.target.value)}
                                             disabled={!rule.is_active}
-                                            className="form-select shadow-none border-secondary border-opacity-25"
+                                            className="form-select shadow-none border-secondary border-opacity-25 mb-1"
                                         >
                                             {connectedOptions.length > 0 ? (
                                                 <>
                                                     <option value="">Selecione um processador...</option>
-                                                    {connectedOptions.map(opt => (
-                                                        <option key={opt.value} value={opt.value}>
-                                                            {opt.label}
-                                                        </option>
-                                                    ))}
+                                                    {connectedOptions.map(opt => <option key={opt.value} value={opt.value}>{opt.label}</option>)}
                                                 </>
-                                            ) : (
-                                                <option value="">Nenhum gateway configurado</option>
-                                            )}
+                                            ) : <option value="">Nenhum gateway configurado</option>}
                                         </Form.Select>
                                         
                                         {!keyStatus[rule.provider] && rule.provider && rule.provider !== 'OFFLINE' && (
-                                            <div className="mt-2 text-danger small fw-bold" style={{fontSize: '0.75rem'}}>
-                                                <i className="bi bi-exclamation-triangle-fill me-1"></i>
-                                                Atenção: A chave conectada foi removida!
+                                            <div className="text-danger small fw-bold" style={{fontSize: '0.75rem'}}>
+                                                <i className="bi bi-exclamation-triangle-fill me-1"></i>Atenção: A chave conectada foi removida!
                                             </div>
                                         )}
                                     </Form.Group>
+
+                                    {/* 🟢 CAIXA DE VÍNCULO COM O MÓDULO FISCAL */}
+                                    <Form.Group>
+                                        <Form.Label className="small text-muted fw-bold text-uppercase mb-1" style={{fontSize: '10px'}}>
+                                            <i className="bi bi-receipt-cutoff me-1"></i>Vincular NF-e / NFC-e (SEFAZ)
+                                        </Form.Label>
+                                        <Form.Select 
+                                            value={rule.fiscal_payment_id || ''} 
+                                            onChange={(e) => onUpdateRule(rule.method, 'fiscal_payment_id', e.target.value)}
+                                            disabled={!rule.is_active}
+                                            className="form-select form-select-sm shadow-none bg-light"
+                                        >
+                                            <option value="">Sem Vínculo Fiscal</option>
+                                            {formasFiscais.map(f => (
+                                                <option key={f.id} value={f.id}>{f.descricao} (Sefaz: {f.codigo_sefaz})</option>
+                                            ))}
+                                        </Form.Select>
+                                    </Form.Group>
+
                                 </Card.Body>
                             </Card>
                         </Col>
@@ -218,7 +212,6 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
                 })}
             </Row>
 
-            {/* SEÇÃO 3: PAGAMENTO NA ENTREGA (OFFLINE) */}
             <hr className="my-5 opacity-10" />
             <h6 className="fw-bold text-uppercase text-secondary mb-3 small ls-1">3. Pagamento na Entrega (Motoboy/Retirada)</h6>
             
@@ -229,22 +222,44 @@ const PaymentRouting = ({ rules, availableProviders, keyStatus, onUpdateRule, on
                     return (
                         <Col key={rule.method} md={6} lg={4} xl={3}>
                             <Card className={`h-100 shadow-sm border-0 ${!rule.is_active ? 'bg-light opacity-75' : ''}`}>
-                                <Card.Body className="d-flex align-items-center justify-content-between">
-                                    <div className="d-flex align-items-center">
-                                        <div className="me-3 fs-4 p-2 bg-white rounded shadow-sm text-center" style={{minWidth: '50px'}}>
-                                            {meta.icon}
+                                <Card.Body>
+                                    <div className="d-flex justify-content-between align-items-center mb-3">
+                                        <div className="d-flex align-items-center">
+                                            <div className="me-3 fs-4 p-2 bg-white rounded shadow-sm text-center" style={{minWidth: '50px'}}>
+                                                {meta.icon}
+                                            </div>
+                                            <div>
+                                                <h6 className="fw-bold mb-0">{meta.label}</h6>
+                                                <Badge bg="secondary" className="fw-normal">{rule.method}</Badge>
+                                            </div>
                                         </div>
-                                        <div>
-                                            <h6 className="fw-bold mb-0">{meta.label}</h6>
-                                            <small className="text-muted">No ato da entrega</small>
-                                        </div>
+                                        <Form.Check 
+                                            type="switch" checked={rule.is_active}
+                                            onChange={(e) => onUpdateRule(rule.method, 'is_active', e.target.checked)}
+                                            style={{ transform: 'scale(1.2)' }}
+                                        />
                                     </div>
-                                    <Form.Check 
-                                        type="switch"
-                                        checked={rule.is_active}
-                                        onChange={(e) => onUpdateRule(rule.method, 'is_active', e.target.checked)}
-                                        style={{ transform: 'scale(1.3)' }}
-                                    />
+                                    
+                                    <hr className="opacity-10 my-3"/>
+
+                                    {/* 🟢 CAIXA DE VÍNCULO COM O MÓDULO FISCAL OFFLINE */}
+                                    <Form.Group>
+                                        <Form.Label className="small text-muted fw-bold text-uppercase mb-1" style={{fontSize: '10px'}}>
+                                            <i className="bi bi-receipt-cutoff me-1"></i>Vincular NF-e / NFC-e (SEFAZ)
+                                        </Form.Label>
+                                        <Form.Select 
+                                            value={rule.fiscal_payment_id || ''} 
+                                            onChange={(e) => onUpdateRule(rule.method, 'fiscal_payment_id', e.target.value)}
+                                            disabled={!rule.is_active}
+                                            className="form-select form-select-sm shadow-none bg-light"
+                                        >
+                                            <option value="">Sem Vínculo Fiscal</option>
+                                            {formasFiscais.map(f => (
+                                                <option key={f.id} value={f.id}>{f.descricao} (Sefaz: {f.codigo_sefaz})</option>
+                                            ))}
+                                        </Form.Select>
+                                    </Form.Group>
+
                                 </Card.Body>
                             </Card>
                         </Col>

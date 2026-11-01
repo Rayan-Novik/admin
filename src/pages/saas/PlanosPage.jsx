@@ -18,7 +18,8 @@ const PlanosPage = () => {
         dias_teste: 7, 
         limite_produtos: 100,
         limite_usuarios: 1,
-        limite_lojas: 1, // 🟢 ADICIONADO AQUI
+        limite_lojas: 1,
+        limite_caixas: 1,
         destaque: false,
         ativo: true,
         descricao: ''
@@ -57,14 +58,15 @@ const PlanosPage = () => {
                 dias_teste: plano.dias_teste,
                 limite_produtos: plano.limite_produtos,
                 limite_usuarios: plano.limite_usuarios,
-                limite_lojas: plano.limite_lojas || 1, // 🟢 MAPEADO AQUI
+                limite_lojas: plano.limite_lojas || 1,
+                limite_caixas: plano.limite_caixas || 1,
                 destaque: plano.destaque,
                 ativo: plano.ativo,
                 descricao: plano.descricao || ''
             });
         } else {
             setEditingId(null);
-            setFormData({ nome: '', preco_mensal: '', dias_teste: 7, limite_produtos: 100, limite_usuarios: 1, limite_lojas: 1, destaque: false, ativo: true, descricao: '' });
+            setFormData({ nome: '', preco_mensal: '', dias_teste: 7, limite_produtos: 100, limite_usuarios: 1, limite_lojas: 1, limite_caixas: 1, destaque: false, ativo: true, descricao: '' });
         }
         setShowModal(true);
     };
@@ -166,6 +168,10 @@ const PlanosPage = () => {
                                             <i className="bi bi-shop text-primary me-2"></i> 
                                             Até <strong>{plano.limite_lojas || 1}</strong> Loja(s) / Filiais
                                         </li>
+                                        <li>
+                                            <i className="bi bi-display text-primary me-2"></i> 
+                                            Até <strong>{plano.limite_caixas || 1}</strong> Caixa(s) PDV
+                                        </li>
                                         {plano.descricao && (
                                             <li className="mt-2 pt-2 border-top border-secondary border-opacity-25">
                                                 <i className="bi bi-info-circle text-primary me-2"></i> 
@@ -213,8 +219,7 @@ const PlanosPage = () => {
                                 </Form.Group>
                             </Col>
 
-                            {/* 🟢 AQUI FORAM DIVIDIDOS EM md={3} PARA CABER OS 4 CAMPOS */}
-                            <Col md={3}>
+                            <Col md={4}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold text-muted">Dias de Teste</Form.Label>
                                     <InputGroup>
@@ -223,22 +228,28 @@ const PlanosPage = () => {
                                     </InputGroup>
                                 </Form.Group>
                             </Col>
-                            <Col md={3}>
+                            <Col md={4}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold text-muted">Limite de Produtos</Form.Label>
                                     <Form.Control required type="number" name="limite_produtos" value={formData.limite_produtos} onChange={handleChange} />
                                 </Form.Group>
                             </Col>
-                            <Col md={3}>
+                            <Col md={4}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold text-muted">Limite Usuários</Form.Label>
                                     <Form.Control required type="number" name="limite_usuarios" value={formData.limite_usuarios} onChange={handleChange} min="1"/>
                                 </Form.Group>
                             </Col>
-                            <Col md={3}>
+                            <Col md={6}>
                                 <Form.Group>
                                     <Form.Label className="small fw-bold text-muted">Limite de Lojas</Form.Label>
                                     <Form.Control required type="number" name="limite_lojas" value={formData.limite_lojas} onChange={handleChange} min="1"/>
+                                </Form.Group>
+                            </Col>
+                            <Col md={6}>
+                                <Form.Group>
+                                    <Form.Label className="small fw-bold text-muted">Limite de Caixas PDV</Form.Label>
+                                    <Form.Control required type="number" name="limite_caixas" value={formData.limite_caixas} onChange={handleChange} min="1"/>
                                 </Form.Group>
                             </Col>
 

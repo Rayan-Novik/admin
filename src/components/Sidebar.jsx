@@ -21,6 +21,7 @@ const MENU_GROUPS_CONFIG = [
         id: "pdv",
         items: [
             { to: "/admin/pdv", icon: "bi bi-pc-display", text: "Frente de Caixa (PDV)", permission: "PDV_ACCESS" },
+            { to: "/admin/caixas", icon: "bi bi-cash-stack", text: "Gerenciar Caixas PDV", permission: "PDV_ACCESS" },
             { to: "/admin/comandas", icon: "bi bi-phone-vibrate", text: "Comandas / Mesas", permission: "PDV_ACCESS" },
             { to: "/admin/mesas", icon: "bi bi-layout-wtf", text: "Gerenciar Mesas", permission: "CONFIG_UNIDADES" },
         ]
@@ -82,8 +83,13 @@ const MENU_GROUPS_CONFIG = [
         id: "Fiscal",
         requiredModule: "FISCAL", 
         items: [
+            { to: "/admin/nfe/emitir", icon: "bi bi-file-earmark-plus", text: "Emitir NF-e", permission: "FINANCEIRO_VIEW" },
             { to: "/admin/notas-fiscais", icon: "bi bi-receipt-cutoff", text: "Notas de Saída", permission: "FINANCEIRO_VIEW" },
             { to: "/admin/notas-entrada", icon: "bi bi-box-arrow-in-down", text: "Notas de Entrada", permission: "ESTOQUE_MANAGE" },
+            { to: "/admin/cenarios-fiscais", icon: "bi bi-diagram-3", text: "Cenários Fiscais", permission: "CONFIG_INTEGRATIONS" },
+            { to: "/admin/regras-tributarias", icon: "bi bi-calculator", text: "Regras Tributárias", permission: "CONFIG_INTEGRATIONS" },
+            { to: "/admin/tabelas-fiscais", icon: "bi bi-table", text: "Tabelas Fiscais", permission: "CONFIG_INTEGRATIONS" },
+            { to: "/admin/cadastros-fiscais", icon: "bi bi-collection", text: "Séries & Cadastros", permission: "CONFIG_INTEGRATIONS" },
             { to: "/admin/config-fiscal", icon: "bi bi-building-gear", text: "Configuração Fiscal", permission: "CONFIG_INTEGRATIONS" },
         ]
     },
