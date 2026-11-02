@@ -114,7 +114,7 @@ const NotasFiscaisList = () => {
             pis_cst: it.pis_cst || '49',
             cofins_cst: it.cofins_cst || '49',
             ibs_cst: it.ibs_cst || '000',
-            cClassTrib: it.cClassTrib || '000001'
+            cClassTrib: (it.cClassTrib && it.cClassTrib !== 'null' && it.cClassTrib !== 'undefined') ? it.cClassTrib : (it.ibs_cst === '410' ? '410001' : '000001')
         }));
         setModalImpostos({ isOpen: true, nota, itens: itensCopia });
     };
