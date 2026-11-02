@@ -13,10 +13,23 @@ import { FlatListContainer, FlatListHeader, FlatListItem } from '../components/u
 // 🟢 PERMISSÕES FOCADAS NA OPERAÇÃO + CONFIGURAÇÕES DA LOJA
 const PERMISSOES_AGRUPADAS = [
     {
+        categoria: 'Módulos do PDV Caixa (Desktop)',
+        icone: 'bi-pc-display',
+        itens: [
+            { id: 'PDV_ACCESS', label: 'Acessar Caixa / PDV', icon: 'bi-pc-display' },
+            { id: 'PDV_MESAS', label: 'Operar Mesas & Comandas', icon: 'bi-grid-3x3-gap' },
+            { id: 'PDV_SALAO', label: 'Gerenciar Ambientes do Salão', icon: 'bi-diagram-3' },
+            { id: 'PDV_AGENDA', label: 'Visualizar e Operar Agenda', icon: 'bi-calendar-check' },
+            { id: 'PDV_VENDAS', label: 'Histórico de Vendas do Caixa', icon: 'bi-clock-history' },
+            { id: 'PDV_CONFIG', label: 'Acessar Configurações do Caixa (F10)', icon: 'bi-gear' },
+            { id: 'PDV_SANGRIA_SUPRIMENTO', label: 'Realizar Sangria e Suprimento', icon: 'bi-cash-stack' },
+            { id: 'PDV_CANCELAR_CUPOM', label: 'Cancelar Venda ou Cupom Fiscal', icon: 'bi-x-circle' }
+        ]
+    },
+    {
         categoria: 'Vendas & Pedidos',
         icone: 'bi-cart-check',
         itens: [
-            { id: 'PDV_ACCESS', label: 'Acessar Caixa/PDV', icon: 'bi-pc-display' },
             { id: 'PEDIDOS_VIEW', label: 'Visualizar Pedidos Online', icon: 'bi-receipt' },
             { id: 'PEDIDOS_MANAGE', label: 'Despachar / Editar Status de Pedidos', icon: 'bi-truck' },
             { id: 'CLIENTES_MANAGE', label: 'Gerenciar Clientes', icon: 'bi-person-vcard' }
