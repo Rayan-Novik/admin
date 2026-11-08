@@ -289,14 +289,6 @@ const OrderListPage = () => {
         } catch (err) { alert('Erro na operação.'); }
     };
 
-    const copyDriverLink = (driverToken) => {
-        if (!driverToken) return;
-        const link = `${storeUrl}/driver/delivery/${driverToken}`;
-        navigator.clipboard.writeText(link)
-            .then(() => toast.info('Link do Motoboy copiado!'))
-            .catch(() => toast.error('Erro ao copiar link.'));
-    };
-
     const handleFilterChange = (filterName) => {
         setFilters(prev => ({ ...prev, [filterName]: !prev[filterName] }));
         setCurrentPage(1);
@@ -521,7 +513,6 @@ const OrderListPage = () => {
                                 renderBadgeLogistica={renderBadgeLogistica}
                                 checkActionable={checkActionable}
                                 handleAction={handleAction}
-                                copyDriverLink={copyDriverLink}
                             />
                         )}
                     </AnimatePresence>

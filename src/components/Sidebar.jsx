@@ -34,6 +34,7 @@ const MENU_GROUPS_CONFIG = [
             { to: "/products", icon: "bi bi-box-seam", text: "Produtos", permission: "PRODUTOS_VIEW" },
             { to: "/admin/ifood", icon: "bi bi-shop text-danger", text: "Painel iFood", permission: "IFOOD_VIEW" },
             { to: "/orders", icon: "bi bi-cart2", text: "Pedidos Online", permission: "PEDIDOS_VIEW" },
+            { to: "/admin/entregas", icon: "bi bi-geo-alt", text: "Mapa de Entregas", permission: "ENTREGAS_MAPA_VIEW" },
             { to: "/admin/suppliers", icon: "bi bi-truck", text: "Fornecedores", permission: "ESTOQUE_MANAGE" },
             { to: "/admin/reviews", icon: "bi bi-star", text: "Avaliações", permission: "PRODUTOS_VIEW" },
             { to: "/reports", icon: "bi bi-graph-up", text: "Relatórios de Vendas", permission: "FINANCEIRO_VIEW" },

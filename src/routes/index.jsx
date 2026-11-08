@@ -45,6 +45,7 @@ import StoresManager from '../components/modules/StoresManager';
 import ShippingManager from '../components/modules/ShippingManager';
 import PixDiscountModule from '../components/modules/PixDiscountModule';
 import EmailSettings from '../components/modules/Settings/EmailSettings';
+import MapaEntregasPage from '../pages/logistica/MapaEntregasPage';
 
 import ConfiguracoesFiscais from '../pages/fiscal/ConfiguracoesFiscais';
 import ListaNotasFiscais from '../pages/fiscal/ListaNotasFiscais';
@@ -224,8 +225,9 @@ const AppRoutes = ({ adminInfo, handleLogin, handleLogout }) => {
                             <Route path="/admin/product/create" element={<PrivateRoute requiredPermission="PRODUTOS_MANAGE"><ProductCreatePage /></PrivateRoute>} />
                             <Route path="/admin/product/:id/edit" element={<PrivateRoute requiredPermission="PRODUTOS_VIEW"><ProductEditPage /></PrivateRoute>} />
 
-                            {/* PEDIDOS */}
+                            {/* PEDIDOS E LOGÍSTICA */}
                             <Route path="/orders" element={<PrivateRoute requiredPermission="PEDIDOS_VIEW"><OrderListPage /></PrivateRoute>} />
+                            <Route path="/admin/entregas" element={<PrivateRoute requiredPermission="ENTREGAS_MAPA_VIEW"><MapaEntregasPage /></PrivateRoute>} />
                             <Route path="/admin/order/:id" element={<PrivateRoute requiredPermission="PEDIDOS_VIEW"><OrderDetailPage /></PrivateRoute>} />
                             <Route path='/admin/mercadolivre/order/:id' element={<PrivateRoute requiredPermission="PEDIDOS_VIEW"><OrderDetailMLPage /></PrivateRoute>} />
 

@@ -130,13 +130,6 @@ const OrderDetailPage = () => {
         }
     };
 
-    const copyDriverLink = (driverToken) => {
-        if (!driverToken) return;
-        const link = `${storeUrl}/driver/delivery/${driverToken}`;
-        navigator.clipboard.writeText(link)
-            .then(() => toast.info('Link copiado!'))
-            .catch(() => toast.error('Erro ao copiar link.'));
-    };
 
     // ==========================================================
     // 🟢 IMPRESSÃO A4 (VIA CSS DO NAVEGADOR - MANTÉM O ESTILO!)
@@ -239,15 +232,10 @@ const OrderDetailPage = () => {
                             <Dropdown.Menu className="shadow border-0 rounded-3 mt-2" style={{ minWidth: '250px' }}>
                                 <Dropdown.Header className="fw-bold text-uppercase">Gestão Logística</Dropdown.Header>
 
-                                {isOutForDelivery && !isDelivered && pedidoInfo.delivery_pin ? (
-                                    <>
-                                        <Dropdown.ItemText className="text-primary fw-bold bg-primary bg-opacity-10 py-2">
-                                            <i className="bi bi-bicycle me-2"></i> Em Rota - PIN: {pedidoInfo.delivery_pin}
-                                        </Dropdown.ItemText>
-                                        <Dropdown.Item onClick={() => copyDriverLink(pedidoInfo.driver_token)}>
-                                            <i className="bi bi-link-45deg me-2"></i> Copiar Link do Motoboy
-                                        </Dropdown.Item>
-                                    </>
+                                {isOutForDelivery && !isDelivered ? (
+                                    <Dropdown.Item onClick={() => navigate('/admin/entregas')} className="text-primary fw-bold">
+                                        <i className="bi bi-bicycle me-2"></i> Acompanhar no Mapa de Entregas
+                                    </Dropdown.Item>
                                 ) : (
                                     <>
                                         {isActionable && !isDelivered && !isOutForDelivery && (
@@ -261,8 +249,8 @@ const OrderDetailPage = () => {
                                                         <i className="bi bi-box-seam me-2"></i> Marcar Pronto (Separar)
                                                     </Dropdown.Item>
                                             ) : (
-                                                <Dropdown.Item onClick={() => handleAction('deliver')} className="text-info fw-bold">
-                                                    <i className="bi bi-bicycle me-2"></i> Despachar Entregador
+                                                <Dropdown.Item onClick={() => navigate('/admin/entregas')} className="text-info fw-bold">
+                                                    <i className="bi bi-geo-alt me-2"></i> Despachar no Mapa de Entregas
                                                 </Dropdown.Item>
                                             )
                                         )}

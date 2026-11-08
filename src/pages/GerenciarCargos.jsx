@@ -36,6 +36,14 @@ const PERMISSOES_AGRUPADAS = [
         ]
     },
     {
+        categoria: 'Logística & Entregas',
+        icone: 'bi-geo-alt',
+        itens: [
+            { id: 'ENTREGAS_MAPA_VIEW', label: 'Visualizar Mapa de Entregas & Radar de Motoboys', icon: 'bi-map' },
+            { id: 'DRIVER_APP_ACCESS', label: 'Acesso ao Aplicativo do Entregador (App Mobile)', icon: 'bi-phone' }
+        ]
+    },
+    {
         categoria: 'Ifood',
         icone: '/images/ifood-logo-0.png',
         itens: [

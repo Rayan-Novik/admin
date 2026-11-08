@@ -58,7 +58,7 @@ export const PreparationTimer = ({ orderDate }) => {
 // ==============================================================
 export const OrderListContent = ({ 
     items, podeGerenciarPedidos, formatCurrency, renderOrigemBadge, 
-    renderBadgeLogistica, checkActionable, handleAction, copyDriverLink 
+    renderBadgeLogistica, checkActionable, handleAction 
 }) => {
     
     return (
@@ -154,24 +154,17 @@ export const OrderListContent = ({
                                     {(p.origem === 'ecommerce' || p.origem === 'pdv') && isActionable && !isReady && !isDelivered && !isOutForDelivery && (
                                         <PreparationTimer orderDate={p.data_pedido} />
                                     )}
-
-                                    {/* PIN Seguro */}
-                                    {isOutForDelivery && !isDelivered && p.delivery_pin && (
-                                        <div className="mt-1 small fw-bold text-secondary">
-                                            PIN Cliente: <span className="text-danger bg-danger bg-opacity-10 px-2 py-1 rounded ms-1">{p.delivery_pin}</span>
-                                        </div>
-                                    )}
                                 </div>
 
                                 {/* COLUNA 5: AÇÕES */}
                                 <div className="col-12 col-lg-2 p-0 mt-3 mt-lg-0 d-flex flex-wrap justify-content-lg-end align-items-center gap-2">
 
-                                    {/* Ação: Copiar Link do Motoboy */}
-                                    {isOutForDelivery && !isDelivered && p.delivery_pin && (
-                                        <OverlayTrigger overlay={<Tooltip>Copiar Link do Motoboy</Tooltip>}>
-                                            <Button variant="link" className="text-primary p-0 text-decoration-none shadow-none" onClick={() => copyDriverLink(p.driver_token)}>
-                                                <i className="bi bi-link-45deg fs-4"></i>
-                                            </Button>
+                                    {/* Ação: Ver no Mapa de Entregas */}
+                                    {isOutForDelivery && !isDelivered && (
+                                        <OverlayTrigger overlay={<Tooltip>Ver no Mapa de Entregas</Tooltip>}>
+                                            <SquareButton as={Link} to="/admin/entregas" className="text-primary border-primary bg-primary bg-opacity-10">
+                                                <i className="bi bi-geo-alt"></i>
+                                            </SquareButton>
                                         </OverlayTrigger>
                                     )}
 
