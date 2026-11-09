@@ -527,24 +527,25 @@ const MapaEntregasPage = () => {
         setDispatchedData(null);
         setMotoboyWhatsapp('');
 
-        // Se a lista de entregadores ainda estiver vazia, busca da API
-        if (!entregadores || entregadores.length === 0) {
-            try {
-                setLoadingEntregadores(true);
-                const res = await api.get('/pedidos/entregas/entregadores');
-                if (res.data?.entregadores) {
-                    setEntregadores(res.data.entregadores);
-                    if (res.data.entregadores.length > 0) {
-                        setSelectedEntregadorId(res.data.entregadores[0].id_funcionario);
-                    }
+        // Sempre busca lista fresca de entregadores autorizados
+        try {
+            setLoadingEntregadores(true);
+            const res = await api.get('/pedidos/entregas/entregadores');
+            if (res.data?.entregadores && Array.isArray(res.data.entregadores)) {
+                setEntregadores(res.data.entregadores);
+                if (res.data.entregadores.length > 0) {
+                    setSelectedEntregadorId(res.data.entregadores[0].id_funcionario);
+                } else {
+                    setSelectedEntregadorId('');
                 }
-            } catch (err) {
-                console.warn('Erro ao carregar lista de entregadores:', err);
-            } finally {
-                setLoadingEntregadores(false);
             }
-        } else {
-            setSelectedEntregadorId(entregadores[0].id_funcionario);
+        } catch (err) {
+            console.warn('Erro ao carregar lista de entregadores:', err);
+            if (entregadores && entregadores.length > 0) {
+                setSelectedEntregadorId(entregadores[0].id_funcionario);
+            }
+        } finally {
+            setLoadingEntregadores(false);
         }
 
         setDispatchModalOpen(true);
