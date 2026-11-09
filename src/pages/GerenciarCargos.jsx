@@ -21,6 +21,7 @@ const PERMISSOES_AGRUPADAS = [
             { id: 'PDV_SALAO', label: 'Gerenciar Ambientes do Salão', icon: 'bi-diagram-3' },
             { id: 'PDV_AGENDA', label: 'Visualizar e Operar Agenda', icon: 'bi-calendar-check' },
             { id: 'PDV_VENDAS', label: 'Histórico de Vendas do Caixa', icon: 'bi-clock-history' },
+            { id: 'PDV_ENTREGAS_MAPA', label: 'Visualizar Mapa de Entregas no PDV Desktop', icon: 'bi-geo-alt' },
             { id: 'PDV_CONFIG', label: 'Acessar Configurações do Caixa (F10)', icon: 'bi-gear' },
             { id: 'PDV_SANGRIA_SUPRIMENTO', label: 'Realizar Sangria e Suprimento', icon: 'bi-cash-stack' },
             { id: 'PDV_CANCELAR_CUPOM', label: 'Cancelar Venda ou Cupom Fiscal', icon: 'bi-x-circle' }

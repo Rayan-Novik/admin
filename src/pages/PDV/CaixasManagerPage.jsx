@@ -16,7 +16,8 @@ import {
     Copy,
     Check,
     Laptop,
-    Send
+    Send,
+    MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -47,6 +48,10 @@ export default function CaixasManagerPage() {
     const [novoUltimoNumero, setNovoUltimoNumero] = useState('');
     const [salvandoNumero, setSalvandoNumero] = useState(false);
     const [regerandoTokenId, setRegerandoTokenId] = useState(null);
+
+    // Controle de Módulos nos Caixas Desktop (.exe)
+    const [moduloEntregasAtivo, setModuloEntregasAtivo] = useState(true);
+    const [salvandoModulo, setSalvandoModulo] = useState(false);
 
     // Modal Disparar Carga aos Caixas
     const [modalCargaOpen, setModalCargaOpen] = useState(false);
@@ -104,13 +109,34 @@ export default function CaixasManagerPage() {
     const carregarCaixas = async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/pdv/caixas');
-            setCaixasData(data);
+            const [resCaixas, resModulos] = await Promise.all([
+                api.get('/pdv/caixas'),
+                api.get('/pdv/modulos-config').catch(() => ({ data: { modulos: { entregas_mapa: true } } }))
+            ]);
+            setCaixasData(resCaixas.data);
+            if (resModulos.data?.modulos) {
+                setModuloEntregasAtivo(resModulos.data.modulos.entregas_mapa !== false);
+            }
         } catch (error) {
             console.error('Erro ao carregar caixas:', error);
             toast.error(error.response?.data?.message || 'Erro ao carregar lista de caixas.');
         } finally {
             setLoading(false);
+        }
+    };
+
+    const handleToggleModuloEntregas = async (checked) => {
+        setSalvandoModulo(true);
+        setModuloEntregasAtivo(checked);
+        try {
+            await api.put('/pdv/modulos-config', { entregas_mapa: checked });
+            toast.success(`Módulo de Mapa de Entregas no PDV ${checked ? 'habilitado' : 'desabilitado'} com sucesso!`);
+        } catch (err) {
+            console.error('Erro ao salvar módulo de entregas:', err);
+            toast.error('Erro ao atualizar configuração do módulo.');
+            setModuloEntregasAtivo(!checked);
+        } finally {
+            setSalvandoModulo(false);
         }
     };
 
@@ -310,6 +336,39 @@ export default function CaixasManagerPage() {
                     </div>
                 </Col>
             </Row>
+
+            {/* Configuração de Recursos e Módulos do PDV Desktop (.exe) */}
+            <div className="p-3 px-4 bg-white border rounded-4 shadow-sm mb-4 d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div className="d-flex align-items-center gap-3">
+                    <div className="p-2.5 rounded-3 bg-primary bg-opacity-10 text-primary">
+                        <MapPin size={24} />
+                    </div>
+                    <div>
+                        <div className="d-flex align-items-center gap-2 mb-0.5">
+                            <h6 className="fw-bold mb-0 text-dark">
+                                Módulo de Mapa de Entregas & Radar no PDV (.exe)
+                            </h6>
+                            <span className={`badge ${moduloEntregasAtivo ? 'bg-success' : 'bg-secondary'} rounded-pill px-2.5 py-1 fw-bold`} style={{ fontSize: '10px' }}>
+                                {moduloEntregasAtivo ? 'HABILITADO NO PDV' : 'DESABILITADO'}
+                            </span>
+                        </div>
+                        <small className="text-muted">
+                            Quando ativado, os caixas desktop (.exe) exibirão a aba lateral "ENTREGAS" com mapa em tempo real, rotas ativas e radar de motoboys para operadores com permissão.
+                        </small>
+                    </div>
+                </div>
+                <div className="d-flex align-items-center gap-3">
+                    <Form.Check
+                        type="switch"
+                        id="switchModuloEntregas"
+                        className="fs-4 m-0 cursor-pointer"
+                        checked={moduloEntregasAtivo}
+                        disabled={salvandoModulo}
+                        onChange={e => handleToggleModuloEntregas(e.target.checked)}
+                        title={moduloEntregasAtivo ? "Clique para desabilitar o mapa no PDV" : "Clique para habilitar o mapa no PDV"}
+                    />
+                </div>
+            </div>
 
             {/* Alerta de Limite do Plano */}
             {!caixasData.pode_adicionar && (

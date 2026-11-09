@@ -14,7 +14,8 @@ import {
     Edit3,
     Check,
     Lock,
-    Save
+    Save,
+    MapPin
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -58,6 +59,11 @@ export default function PdvConfigModal({ isOpen, onClose, initialTab = 'caixas',
             setConfig(getPdvConfig());
             carregarDadosFiscais();
             carregarCaixas();
+            api.get('/pdv/modulos-config').then(res => {
+                if (res.data?.modulos) {
+                    setConfig(prev => ({ ...prev, modulo_entregas_mapa: res.data.modulos.entregas_mapa !== false }));
+                }
+            }).catch(() => {});
         }
     }, [isOpen, initialTab]);
 
@@ -133,6 +139,9 @@ export default function PdvConfigModal({ isOpen, onClose, initialTab = 'caixas',
 
     const handleSave = () => {
         const saved = savePdvConfig(config);
+        if (config.modulo_entregas_mapa !== undefined) {
+            api.put('/pdv/modulos-config', { entregas_mapa: config.modulo_entregas_mapa }).catch(() => {});
+        }
         if (onConfigChange) onConfigChange(saved);
         if (onSave) onSave(saved);
         toast.success('Configurações do PDV salvas com sucesso!');
@@ -637,6 +646,21 @@ export default function PdvConfigModal({ isOpen, onClose, initialTab = 'caixas',
                 {/* ABA 3: OPERAÇÃO & IMPRESSÃO */}
                 {activeTab === 'operacao' && (
                     <div className="d-flex flex-column gap-3">
+                        <div className="p-3 border rounded-4 d-flex justify-content-between align-items-center bg-primary bg-opacity-10 border-primary border-opacity-25">
+                            <div>
+                                <div className="fw-bold d-flex align-items-center gap-2" style={{ color: 'var(--text-primary)' }}>
+                                    <MapPin size={18} className="text-primary" /> Módulo de Mapa de Entregas no PDV Desktop (.exe)
+                                </div>
+                                <small className="text-muted">Exibe a aba "ENTREGAS" com mapa, rotas ativas e radar de motoboys nos caixas desktop instalados</small>
+                            </div>
+                            <Form.Check
+                                type="switch"
+                                className="fs-4 m-0"
+                                checked={config.modulo_entregas_mapa !== false}
+                                onChange={e => setConfig({ ...config, modulo_entregas_mapa: e.target.checked })}
+                            />
+                        </div>
+
                         <div className="p-3 border rounded-4 d-flex justify-content-between align-items-center">
                             <div>
                                 <div className="fw-bold" style={{ color: 'var(--text-primary)' }}>Exibir Campo de CPF/CNPJ na Nota no Caixa</div>
