@@ -209,6 +209,20 @@ const MapaEntregasPage = () => {
     const [selectedEntregadorId, setSelectedEntregadorId] = useState('');
     const [loadingEntregadores, setLoadingEntregadores] = useState(false);
 
+    // Edição de Endereço no Modal de Despacho
+    const [editingAddress, setEditingAddress] = useState(false);
+    const [savingAddress, setSavingAddress] = useState(false);
+    const [searchingCep, setSearchingCep] = useState(false);
+    const [addressForm, setAddressForm] = useState({
+        logradouro: '',
+        numero: '',
+        complemento: '',
+        bairro: '',
+        cidade: '',
+        estado: '',
+        cep: ''
+    });
+
     // Modal & Configurações de Logística e Pagamento dos Entregadores
     const [settingsModalOpen, setSettingsModalOpen] = useState(false);
     const [deliverySettings, setDeliverySettings] = useState({
@@ -353,14 +367,35 @@ const MapaEntregasPage = () => {
         return () => clearInterval(interval);
     }, [autoRefresh, fetchRadar]);
 
+    // Filtro exclusivo: Apenas pedidos destinados para entrega (exclui Retirada na Loja, Balcão PDV e Cancelados)
+    const isPedidoParaEntrega = useCallback((p) => {
+        if (!p) return false;
+        const statusEntrega = String(p.status_entrega || '').toLowerCase().trim();
+        if (statusEntrega === 'cancelado' || statusEntrega.includes('expira') || statusEntrega === 'entregue') {
+            return false;
+        }
+        if (String(p.status_pagamento || '').toUpperCase() === 'CANCELADO') {
+            return false;
+        }
+        const envio = String(p.metodo_envio || '').toLowerCase().trim();
+        if (envio.includes('retirada') || envio.includes('local') || envio.includes('balcão') || envio.includes('balcao') || envio.includes('mesa')) {
+            return false;
+        }
+        // Se for canal PDV ou Comanda sem endereço cadastrado, não é delivery
+        if ((p.canal_venda === 'PDV' || p.canal_venda === 'COMANDA') && !p.endereco?.logradouro && !p.id_endereco_entrega) {
+            return false;
+        }
+        return true;
+    }, []);
+
     // Separação dos Pedidos
     const pedidosEmRota = useMemo(() => {
-        return pedidos.filter(p => p.status_entrega === 'Em Rota de Entrega');
-    }, [pedidos]);
+        return pedidos.filter(p => isPedidoParaEntrega(p) && p.status_entrega === 'Em Rota de Entrega');
+    }, [pedidos, isPedidoParaEntrega]);
 
     const pedidosADespachar = useMemo(() => {
-        return pedidos.filter(p => p.status_entrega !== 'Em Rota de Entrega');
-    }, [pedidos]);
+        return pedidos.filter(p => isPedidoParaEntrega(p) && p.status_entrega !== 'Em Rota de Entrega');
+    }, [pedidos, isPedidoParaEntrega]);
 
     // Filtragem por busca
     const pedidosFiltrados = useMemo(() => {
@@ -526,6 +561,16 @@ const MapaEntregasPage = () => {
         setSelectedOrder(pedido);
         setDispatchedData(null);
         setMotoboyWhatsapp('');
+        setEditingAddress(false);
+        setAddressForm({
+            logradouro: pedido.endereco?.logradouro || '',
+            numero: pedido.endereco?.numero || '',
+            complemento: pedido.endereco?.complemento || '',
+            bairro: pedido.endereco?.bairro || '',
+            cidade: pedido.endereco?.cidade || '',
+            estado: pedido.endereco?.estado || '',
+            cep: pedido.endereco?.cep || ''
+        });
 
         // Sempre busca lista fresca de entregadores autorizados
         try {
@@ -549,6 +594,87 @@ const MapaEntregasPage = () => {
         }
 
         setDispatchModalOpen(true);
+    };
+
+    // Consulta CEP no ViaCEP
+    const handleCepBlur = async () => {
+        const cleanCep = (addressForm.cep || '').replace(/\D/g, '');
+        if (cleanCep.length === 8) {
+            try {
+                setSearchingCep(true);
+                const res = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
+                const data = await res.json();
+                if (!data.erro) {
+                    setAddressForm(prev => ({
+                        ...prev,
+                        logradouro: data.logradouro || prev.logradouro,
+                        bairro: data.bairro || prev.bairro,
+                        cidade: data.localidade || prev.cidade,
+                        estado: data.uf || prev.estado
+                    }));
+                    toast.info('Endereço autocompletado pelo CEP!');
+                }
+            } catch (e) {
+                console.warn('Erro ao consultar CEP:', e);
+            } finally {
+                setSearchingCep(false);
+            }
+        }
+    };
+
+    // Salvar e re-geocodificar endereço do pedido
+    const handleSaveOrderAddress = async (e) => {
+        if (e) e.preventDefault();
+        if (!selectedOrder) return;
+        if (!addressForm.logradouro || !addressForm.logradouro.trim()) {
+            toast.warning('Informe pelo menos a rua / logradouro.');
+            return;
+        }
+
+        setSavingAddress(true);
+        try {
+            const res = await api.put(`/pedidos/${selectedOrder.id_pedido}/endereco`, addressForm);
+            const updatedAddress = res.data.endereco;
+
+            // Atualiza o selectedOrder
+            setSelectedOrder(prev => ({
+                ...prev,
+                endereco: {
+                    ...prev?.endereco,
+                    ...updatedAddress
+                }
+            }));
+
+            // Atualiza na lista de pedidos
+            setPedidos(prev => prev.map(p => {
+                if (p.id_pedido === selectedOrder.id_pedido) {
+                    return {
+                        ...p,
+                        endereco: {
+                            ...p.endereco,
+                            ...updatedAddress
+                        }
+                    };
+                }
+                return p;
+            }));
+
+            setEditingAddress(false);
+
+            if (updatedAddress.latitude && updatedAddress.longitude) {
+                toast.success(res.data.message || 'Endereço atualizado e localizado no mapa!');
+                const newCoords = [parseFloat(updatedAddress.latitude), parseFloat(updatedAddress.longitude)];
+                setFocusedCoords(newCoords);
+                setMapZoom(16);
+            } else {
+                toast.warning('Endereço salvo com sucesso! No entanto, ainda não foi possível obter coordenadas exatas.');
+            }
+        } catch (err) {
+            console.error('Erro ao atualizar endereço do pedido:', err);
+            toast.error(err.response?.data?.message || 'Erro ao atualizar endereço do pedido.');
+        } finally {
+            setSavingAddress(false);
+        }
     };
 
     const handleConfirmDispatch = async () => {
@@ -732,7 +858,7 @@ const MapaEntregasPage = () => {
                     })}
 
                     {/* MARCADORES DOS CLIENTES (DESTINO) */}
-                    {pedidos.map((p) => {
+                    {pedidos.filter(isPedidoParaEntrega).map((p) => {
                         if (!p.endereco?.latitude || !p.endereco?.longitude) return null;
 
                         return (
@@ -1498,6 +1624,17 @@ const MapaEntregasPage = () => {
                             </div>
                         )}
 
+                        {(!selectedOrder.endereco?.latitude || !selectedOrder.endereco?.longitude) && (
+                            <button
+                                onClick={() => handleOpenDispatchModal(selectedOrder)}
+                                className="btn btn-sm btn-outline-warning d-flex align-items-center gap-1.5 ms-2 py-1 px-2.5 rounded-pill fw-bold shadow-none"
+                                style={{ fontSize: '11px' }}
+                                title="Editar endereço e calcular coordenadas"
+                            >
+                                <i className="bi bi-geo-alt-fill"></i> Sem GPS • Editar Endereço
+                            </button>
+                        )}
+
                         <button
                             onClick={() => {
                                 setSelectedOrder(null);
@@ -1590,18 +1727,199 @@ const MapaEntregasPage = () => {
                                 Selecione quem realizará a entrega. O sistema enviará o trajeto para o aplicativo do entregador e gerará o PIN de segurança para o cliente.
                             </p>
 
-                            {/* Resumo do Pedido */}
+                            {/* Resumo do Pedido & Endereço de Entrega */}
                             <div style={{ backgroundColor: '#f0f7ff', padding: '12px', borderRadius: '12px', border: '1px solid #bae0fd' }} className="mb-3">
                                 <div className="d-flex justify-content-between mb-1" style={{ fontSize: '12px' }}>
                                     <span className="text-muted">Cliente:</span>
-                                    <span className="fw-bold text-dark">{selectedOrder?.cliente?.nome}</span>
+                                    <span className="fw-bold text-dark">{selectedOrder?.cliente?.nome || 'Cliente'}</span>
                                 </div>
-                                <div className="d-flex justify-content-between mb-1" style={{ fontSize: '12px' }}>
-                                    <span className="text-muted">Endereço:</span>
-                                    <span className="fw-bold text-dark text-end" style={{ maxWidth: '220px' }}>
-                                        {selectedOrder?.endereco?.logradouro}, {selectedOrder?.endereco?.numero}
-                                    </span>
+
+                                <div className="d-flex justify-content-between align-items-center mb-1" style={{ fontSize: '12px' }}>
+                                    <span className="text-muted">Endereço de Entrega:</span>
+                                    <button
+                                        type="button"
+                                        onClick={() => setEditingAddress(!editingAddress)}
+                                        className="btn btn-sm py-0 px-2 fw-semibold shadow-none"
+                                        style={{
+                                            fontSize: '11px',
+                                            borderRadius: '6px',
+                                            backgroundColor: editingAddress ? '#fee2e2' : '#ffffff',
+                                            color: editingAddress ? '#dc2626' : '#0084fb',
+                                            border: editingAddress ? '1px solid #fecaca' : '1px solid #bae0fd'
+                                        }}
+                                    >
+                                        <i className={`bi ${editingAddress ? 'bi-x-lg' : 'bi-pencil-square'} me-1`}></i>
+                                        {editingAddress ? 'Cancelar Edição' : 'Editar Endereço'}
+                                    </button>
                                 </div>
+
+                                {!editingAddress ? (
+                                    <>
+                                        <div className="p-2 rounded bg-white border border-light-subtle mb-2">
+                                            <div className="fw-bold text-dark" style={{ fontSize: '12px' }}>
+                                                {selectedOrder?.endereco?.logradouro ? (
+                                                    <>
+                                                        {selectedOrder.endereco.logradouro}, {selectedOrder.endereco.numero || 'S/N'}
+                                                        {selectedOrder.endereco.complemento ? ` (${selectedOrder.endereco.complemento})` : ''}
+                                                    </>
+                                                ) : (
+                                                    <span className="text-danger">Endereço não cadastrado</span>
+                                                )}
+                                            </div>
+                                            <div className="text-muted small" style={{ fontSize: '11px' }}>
+                                                {[selectedOrder?.endereco?.bairro, selectedOrder?.endereco?.cidade, selectedOrder?.endereco?.estado].filter(Boolean).join(' - ')}
+                                                {selectedOrder?.endereco?.cep ? ` | CEP: ${selectedOrder.endereco.cep}` : ''}
+                                            </div>
+                                        </div>
+
+                                        <div className="d-flex justify-content-between align-items-center mb-2" style={{ fontSize: '11px' }}>
+                                            <span className="text-muted">Status no Mapa:</span>
+                                            {selectedOrder?.endereco?.latitude && selectedOrder?.endereco?.longitude ? (
+                                                <span className="badge rounded-pill bg-success-subtle text-success border border-success-subtle d-inline-flex align-items-center gap-1" style={{ fontSize: '10px' }}>
+                                                    <i className="bi bi-geo-alt-fill"></i> Coordenadas OK
+                                                </span>
+                                            ) : (
+                                                <span className="badge rounded-pill bg-warning-subtle text-warning-emphasis border border-warning-subtle d-inline-flex align-items-center gap-1" style={{ fontSize: '10px' }}>
+                                                    <i className="bi bi-exclamation-triangle-fill"></i> Sem coordenadas no mapa
+                                                </span>
+                                            )}
+                                        </div>
+                                    </>
+                                ) : (
+                                    <div className="p-2.5 rounded bg-white border border-primary-subtle mb-2">
+                                        <div className="row g-2 mb-2">
+                                            <div className="col-5">
+                                                <label className="text-muted small fw-semibold mb-1" style={{ fontSize: '10.5px' }}>CEP</label>
+                                                <div className="input-group input-group-sm">
+                                                    <input
+                                                        type="text"
+                                                        className="form-control form-control-sm shadow-none"
+                                                        placeholder="00000-000"
+                                                        value={addressForm.cep}
+                                                        onChange={(e) => setAddressForm({ ...addressForm, cep: e.target.value })}
+                                                        onBlur={handleCepBlur}
+                                                        style={{ fontSize: '11.5px' }}
+                                                    />
+                                                    {searchingCep && (
+                                                        <span className="input-group-text bg-white p-1">
+                                                            <Spinner size="sm" animation="border" style={{ width: '12px', height: '12px' }} />
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="col-7">
+                                                <label className="text-muted small fw-semibold mb-1" style={{ fontSize: '10.5px' }}>Bairro</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm shadow-none"
+                                                    placeholder="Bairro"
+                                                    value={addressForm.bairro}
+                                                    onChange={(e) => setAddressForm({ ...addressForm, bairro: e.target.value })}
+                                                    style={{ fontSize: '11.5px' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="row g-2 mb-2">
+                                            <div className="col-8">
+                                                <label className="text-muted small fw-semibold mb-1" style={{ fontSize: '10.5px' }}>Rua / Logradouro *</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm shadow-none"
+                                                    placeholder="Nome da rua / avenida"
+                                                    value={addressForm.logradouro}
+                                                    onChange={(e) => setAddressForm({ ...addressForm, logradouro: e.target.value })}
+                                                    style={{ fontSize: '11.5px' }}
+                                                />
+                                            </div>
+                                            <div className="col-4">
+                                                <label className="text-muted small fw-semibold mb-1" style={{ fontSize: '10.5px' }}>Número</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm shadow-none"
+                                                    placeholder="123 ou S/N"
+                                                    value={addressForm.numero}
+                                                    onChange={(e) => setAddressForm({ ...addressForm, numero: e.target.value })}
+                                                    style={{ fontSize: '11.5px' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="row g-2 mb-2">
+                                            <div className="col-5">
+                                                <label className="text-muted small fw-semibold mb-1" style={{ fontSize: '10.5px' }}>Complemento</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm shadow-none"
+                                                    placeholder="Apto, Bloco..."
+                                                    value={addressForm.complemento}
+                                                    onChange={(e) => setAddressForm({ ...addressForm, complemento: e.target.value })}
+                                                    style={{ fontSize: '11.5px' }}
+                                                />
+                                            </div>
+                                            <div className="col-5">
+                                                <label className="text-muted small fw-semibold mb-1" style={{ fontSize: '10.5px' }}>Cidade</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm shadow-none"
+                                                    placeholder="Cidade"
+                                                    value={addressForm.cidade}
+                                                    onChange={(e) => setAddressForm({ ...addressForm, cidade: e.target.value })}
+                                                    style={{ fontSize: '11.5px' }}
+                                                />
+                                            </div>
+                                            <div className="col-2">
+                                                <label className="text-muted small fw-semibold mb-1" style={{ fontSize: '10.5px' }}>UF</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-control form-control-sm text-uppercase shadow-none"
+                                                    maxLength={2}
+                                                    placeholder="AM"
+                                                    value={addressForm.estado}
+                                                    onChange={(e) => setAddressForm({ ...addressForm, estado: e.target.value })}
+                                                    style={{ fontSize: '11.5px' }}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="d-flex justify-content-end gap-1.5 pt-1">
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm btn-light py-1 px-2.5"
+                                                style={{ fontSize: '11px', borderRadius: '6px' }}
+                                                onClick={() => setEditingAddress(false)}
+                                                disabled={savingAddress}
+                                            >
+                                                Cancelar
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="btn btn-sm text-white py-1 px-2.5 d-flex align-items-center gap-1 shadow-sm"
+                                                style={{
+                                                    fontSize: '11px',
+                                                    borderRadius: '6px',
+                                                    background: 'linear-gradient(135deg, #0084fb 0%, #0066d6 100%)',
+                                                    border: 'none'
+                                                }}
+                                                onClick={handleSaveOrderAddress}
+                                                disabled={savingAddress}
+                                            >
+                                                {savingAddress ? (
+                                                    <>
+                                                        <Spinner size="sm" animation="border" style={{ width: '11px', height: '11px' }} />
+                                                        Localizando no mapa...
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <i className="bi bi-geo-alt-fill"></i>
+                                                        Salvar & Localizar no Mapa
+                                                    </>
+                                                )}
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
+
                                 <div className="d-flex justify-content-between pt-1 border-top" style={{ fontSize: '12px' }}>
                                     <span className="text-muted">Total:</span>
                                     <span className="fw-bold text-primary">R$ {parseFloat(selectedOrder?.valor_total || 0).toFixed(2)}</span>
