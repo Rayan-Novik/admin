@@ -97,9 +97,60 @@ const OrderDetailPage = () => {
         }
     }, [orderId, podeVer]);
 
+    // 🟢 Clona e puxa informações do pedido (itens, cliente, notas) para gerar um novo pedido no PDV
+    const handleClonarParaNovoPedido = () => {
+        try {
+            const payloadClone = {
+                origem_pedido_id: pedidoInfo.id_pedido,
+                cliente: pedidoInfo.usuarios ? {
+                    id_usuario: pedidoInfo.usuarios.id_usuario || pedidoInfo.id_usuario,
+                    nome: pedidoInfo.usuarios.nome_completo || pedidoInfo.nome_completo || 'Cliente',
+                    telefone: pedidoInfo.usuarios.telefone || pedidoInfo.telefone || '',
+                    email: pedidoInfo.usuarios.email || ''
+                } : null,
+                cpf_cnpj: pedidoInfo.cpf_cnpj_nota || pedidoInfo.usuarios?.cpf_criptografado || '',
+                itens: (pedidoInfo.pedido_items || []).map(it => ({
+                    id_produto: it.id_produto,
+                    nome: it.nome,
+                    quantidade: Number(it.quantidade) || 1,
+                    preco: Number(it.preco) || 0,
+                    observacao: it.observacao || '',
+                    complementos: it.complementos || []
+                }))
+            };
+            localStorage.setItem('azun_clone_order', JSON.stringify(payloadClone));
+            toast.info('Informações do pedido puxadas com sucesso! Abrindo o PDV para gerar novo pedido...');
+            navigate('/admin/pdv');
+        } catch (err) {
+            toast.error('Erro ao clonar dados do pedido: ' + err.message);
+        }
+    };
+
+    // 🟢 Aprova pagamento do pedido e direciona imediatamente para o módulo fiscal (NFC-e)
+    const handleAprovarPagamento = async () => {
+        if (!podeEditar) return toast.error("Sem permissão para alterar o pedido.");
+        if (!window.confirm(`Deseja aprovar o pagamento do Pedido #${pedidoInfo.id_pedido}? Após a aprovação você será direcionado para emitir a NFC-e.`)) return;
+        try {
+            await api.put(`/pedidos/${orderId}/status`, { status_pagamento: 'PAGO' });
+            toast.success("✅ Pagamento APROVADO com sucesso!");
+            await fetchData();
+            setTimeout(() => {
+                const elem = document.getElementById('secaoEmissaoFiscal');
+                if (elem) {
+                    elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    elem.style.outline = '3px solid #16a34a';
+                    elem.style.borderRadius = '12px';
+                    setTimeout(() => { elem.style.outline = 'none'; }, 3500);
+                }
+            }, 300);
+        } catch (err) {
+            toast.error('Erro ao aprovar pagamento: ' + (err.response?.data?.message || err.message));
+        }
+    };
+
     const handleAction = async (action) => {
         if (!podeEditar) return toast.error("Sem permissão para alterar o pedido.");
-        if (!window.confirm('Tem certeza que deseja executar esta ação?')) return;
+        if (action !== 'delete' && !window.confirm('Tem certeza que deseja executar esta ação?')) return;
         try {
             if (action === 'ready') await api.put(`/pedidos/${orderId}/status`, { status_entrega: 'Pronto para Retirada' });
             if (action === 'pickedup') await api.put(`/pedidos/${orderId}/status`, { status_entrega: 'Entregue' });
@@ -118,9 +169,18 @@ const OrderDetailPage = () => {
             }
 
             if (action === 'delete') {
+                const confirmarCancel = window.confirm(`Atenção: Deseja realmente cancelar o Pedido #${orderId}?`);
+                if (!confirmarCancel) return;
+                
+                const querClonar = window.confirm("Deseja puxar as informações deste pedido (cliente e produtos) para gerar um novo pedido no PDV agora?");
                 await api.delete(`/pedidos/${orderId}`);
                 toast.success('Pedido cancelado com sucesso.');
-                navigate('/admin/orderlist');
+
+                if (querClonar) {
+                    handleClonarParaNovoPedido();
+                } else {
+                    navigate('/admin/orderlist');
+                }
                 return;
             }
 
@@ -262,6 +322,17 @@ const OrderDetailPage = () => {
                                     <i className="bi bi-tag me-2"></i> Etiqueta de Envio Simplificada
                                 </Dropdown.Item>
 
+                                <Dropdown.Divider />
+                                <Dropdown.Item onClick={handleClonarParaNovoPedido} className="text-success fw-bold">
+                                    <i className="bi bi-arrow-repeat me-2"></i> Puxar Informações para Novo Pedido
+                                </Dropdown.Item>
+
+                                {isPendente && (
+                                    <Dropdown.Item onClick={handleAprovarPagamento} className="text-primary fw-bold">
+                                        <i className="bi bi-check-circle-fill me-2"></i> Aprovar Pagamento & Ir para NFC-e
+                                    </Dropdown.Item>
+                                )}
+
                                 {!isPago && !isFalha && (
                                     <>
                                         <Dropdown.Divider />
@@ -278,33 +349,58 @@ const OrderDetailPage = () => {
 
             <div className="no-print mercantile-alert mb-4">
                 {isPendente && (
-                    <Alert variant="warning" className="border-warning shadow-sm border-2 fw-bold">
-                        <i className="bi bi-exclamation-triangle-fill me-2"></i> PAGAMENTO PENDENTE: Não entregue o pedido até a aprovação.
+                    <Alert variant="warning" className="border-warning shadow-sm border-2 d-flex justify-content-between align-items-center flex-wrap gap-2 py-3">
+                        <div>
+                            <i className="bi bi-exclamation-triangle-fill me-2 fs-5 text-warning"></i>
+                            <strong>PAGAMENTO PENDENTE:</strong> Confirme o recebimento para aprovar o pedido e liberar a emissão da NFC-e.
+                        </div>
+                        <Button variant="success" size="sm" className="fw-bold px-3 py-2 rounded-pill d-flex align-items-center gap-1 shadow-sm" onClick={handleAprovarPagamento}>
+                            <i className="bi bi-check-circle-fill"></i> Aprovar Pagamento & Ir para NFC-e
+                        </Button>
                     </Alert>
                 )}
-                {isFalha && (
-                    <Alert variant="danger" className="shadow-sm border-2 fw-bold">
-                        <i className="bi bi-x-circle-fill me-2"></i> PEDIDO CANCELADO / FALHOU.
-                    </Alert>
-                )}
-            </div>
 
-            <div className="no-print mercantile-alert mb-4">
-                {isPendente && (
-                    <Alert variant="warning" className="border-warning shadow-sm border-2 fw-bold">
-                        <i className="bi bi-exclamation-triangle-fill me-2"></i> PAGAMENTO PENDENTE: Não entregue o pedido até a aprovação.
+                {isFalha && (
+                    <Alert variant="danger" className="shadow-sm border-2 d-flex justify-content-between align-items-center flex-wrap gap-2 py-3">
+                        <div>
+                            <i className="bi bi-x-circle-fill me-2 fs-5"></i>
+                            <strong>PEDIDO CANCELADO:</strong> Desistência do cliente ou cancelamento de compra.
+                        </div>
+                        <Button variant="outline-danger" size="sm" className="fw-bold px-3 py-2 rounded-pill bg-white d-flex align-items-center gap-2 shadow-sm" onClick={handleClonarParaNovoPedido}>
+                            <i className="bi bi-arrow-repeat fs-6"></i> Puxar Informações e Gerar Novo Pedido
+                        </Button>
                     </Alert>
                 )}
-                {isFalha && (
-                    <Alert variant="danger" className="shadow-sm border-2 fw-bold">
-                        <i className="bi bi-x-circle-fill me-2"></i> PEDIDO CANCELADO / FALHOU.
+
+                {isPago && (!order?.nota_fiscal && !pedidoInfo?.nota_fiscal) && (
+                    <Alert variant="info" className="border-info shadow-sm d-flex justify-content-between align-items-center flex-wrap gap-2 py-2 mb-0">
+                        <div>
+                            <i className="bi bi-receipt me-2 text-info fs-5"></i>
+                            <strong>Pedido Aprovado!</strong> Deseja emitir o Cupom Fiscal (NFC-e) deste pedido agora?
+                        </div>
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            className="fw-bold px-3 py-1.5 rounded-pill d-flex align-items-center gap-1 shadow-sm"
+                            onClick={() => {
+                                const elem = document.getElementById('secaoEmissaoFiscal');
+                                if (elem) {
+                                    elem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                                    elem.style.outline = '3px solid #2563eb';
+                                    elem.style.borderRadius = '12px';
+                                    setTimeout(() => { elem.style.outline = 'none'; }, 3000);
+                                }
+                            }}
+                        >
+                            <i className="bi bi-shield-check"></i> Emitir NFC-e do Pedido
+                        </Button>
                     </Alert>
                 )}
             </div>
 
             {/* 🟢 MÓDULO FISCAL AQUI (Oculto na impressão) */}
             {podeEditar && (
-                <div className="no-print mb-4">
+                <div className="no-print mb-4" id="secaoEmissaoFiscal">
                     <EmissorNotaPedido 
                         idPedido={pedidoInfo.id_pedido} 
                         // Verifica se a API retornou a nota dentro do pedido ou na raiz do objeto

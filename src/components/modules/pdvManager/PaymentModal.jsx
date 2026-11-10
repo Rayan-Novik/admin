@@ -14,7 +14,9 @@ import {
     ArrowRight,
     Lock,
     Building2,
-    Wallet
+    Wallet,
+    Plus,
+    Trash2
 } from 'lucide-react';
 import { Spinner, Badge } from 'react-bootstrap';
 import { toast } from 'react-toastify';
@@ -78,6 +80,11 @@ export default function PaymentModal({
     const [formaSelecionada, setFormaSelecionada] = useState(null);
     const [loadingFormas, setLoadingFormas] = useState(false);
 
+    // Modalidade: 'UNICO' (pagamento total em 1 forma) ou 'MULTIPLO' (dividir em várias formas)
+    const [tipoPagamento, setTipoPagamento] = useState('UNICO');
+    const [pagamentosMultiplos, setPagamentosMultiplos] = useState([]);
+    const [valorParcialInput, setValorParcialInput] = useState('');
+
     const [recebido, setRecebido] = useState('');
     const [desconto, setDesconto] = useState('');
     const [troco, setTroco] = useState(0);
@@ -93,6 +100,11 @@ export default function PaymentModal({
 
     const valorDesconto = Math.max(0, Math.min(Number(desconto) || 0, total));
     const totalLiquido = Math.max(0, Number((total - valorDesconto).toFixed(2)));
+
+    // Cálculos do Pagamento Múltiplo
+    const totalPagoMultiplo = Number(pagamentosMultiplos.reduce((acc, p) => acc + Number(p.valor || 0), 0).toFixed(2));
+    const saldoRestanteMultiplo = Math.max(0, Number((totalLiquido - totalPagoMultiplo).toFixed(2)));
+    const trocoMultiplo = Math.max(0, Number((totalPagoMultiplo - totalLiquido).toFixed(2)));
 
     // Carrega formas de pagamento cadastradas na SEFAZ do banco
     const carregarFormasSefaz = useCallback(async () => {
@@ -124,6 +136,9 @@ export default function PaymentModal({
             setRecebido('');
             setDesconto('');
             setTroco(0);
+            setTipoPagamento('UNICO');
+            setPagamentosMultiplos([]);
+            setValorParcialInput('');
             setVendaFinalizada(null);
             setFiscalResult(null);
             setEmitindoPosterior(false);
@@ -143,6 +158,46 @@ export default function PaymentModal({
     const handleSelecionarForma = (forma) => {
         setFormaSelecionada(forma);
         setMethod(converterCodigoSefazParaMetodo(forma.codigo_sefaz));
+        if (tipoPagamento === 'MULTIPLO') {
+            const rest = Math.max(0, Number((totalLiquido - totalPagoMultiplo).toFixed(2)));
+            setValorParcialInput(rest > 0 ? String(rest) : '');
+        }
+    };
+
+    const handleAdicionarPagamentoParcial = () => {
+        const val = Number(valorParcialInput);
+        if (!val || val <= 0) {
+            toast.warning('Informe um valor válido maior que zero para adicionar.');
+            return;
+        }
+        if (!formaSelecionada) {
+            toast.warning('Selecione uma forma de pagamento.');
+            return;
+        }
+
+        const novoItem = {
+            id: `${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+            forma: formaSelecionada,
+            metodo: converterCodigoSefazParaMetodo(formaSelecionada.codigo_sefaz),
+            codigo_sefaz: formaSelecionada.codigo_sefaz,
+            descricao: formaSelecionada.descricao,
+            valor: Number(val.toFixed(2))
+        };
+
+        const novaLista = [...pagamentosMultiplos, novoItem];
+        setPagamentosMultiplos(novaLista);
+
+        const novoTotalPago = Number(novaLista.reduce((acc, p) => acc + p.valor, 0).toFixed(2));
+        const novoRest = Math.max(0, Number((totalLiquido - novoTotalPago).toFixed(2)));
+        setValorParcialInput(novoRest > 0 ? String(novoRest) : '');
+    };
+
+    const handleRemoverPagamentoParcial = (idRemover) => {
+        const novaLista = pagamentosMultiplos.filter(p => p.id !== idRemover);
+        setPagamentosMultiplos(novaLista);
+        const novoTotalPago = Number(novaLista.reduce((acc, p) => acc + p.valor, 0).toFixed(2));
+        const novoRest = Math.max(0, Number((totalLiquido - novoTotalPago).toFixed(2)));
+        setValorParcialInput(novoRest > 0 ? String(novoRest) : '');
     };
 
     const handleSelecionarModoEmissao = (novoModo) => {
@@ -194,16 +249,33 @@ export default function PaymentModal({
     const handleConfirm = async () => {
         if (loading || vendaFinalizada) return;
 
-        const valorRecNum = recebido === '' ? totalLiquido : Number(recebido);
-        if (method === 'DINHEIRO' && valorRecNum < totalLiquido) {
-            playPdvBeep('error');
-            toast.warning('O valor recebido em dinheiro é menor que o total a pagar!');
-            return;
+        const isMultiplo = tipoPagamento === 'MULTIPLO';
+
+        if (isMultiplo) {
+            if (pagamentosMultiplos.length === 0) {
+                playPdvBeep('error');
+                toast.warning('Adicione pelo menos 1 forma de pagamento à lista!');
+                return;
+            }
+            if (totalPagoMultiplo < totalLiquido) {
+                playPdvBeep('error');
+                toast.warning(`Total lançado (R$ ${totalPagoMultiplo.toFixed(2)}) é menor que o total a pagar (R$ ${totalLiquido.toFixed(2)}). Faltam R$ ${saldoRestanteMultiplo.toFixed(2)}.`);
+                return;
+            }
+        } else {
+            const valorRecNum = recebido === '' ? totalLiquido : Number(recebido);
+            if (method === 'DINHEIRO' && valorRecNum < totalLiquido) {
+                playPdvBeep('error');
+                toast.warning('O valor recebido em dinheiro é menor que o total a pagar!');
+                return;
+            }
         }
 
         setLoading(true);
         try {
             const emitirFiscal = modoEmissao !== 'NAO_FISCAL';
+            const valorRecNum = recebido === '' ? totalLiquido : Number(recebido);
+
             const payload = {
                 itens: cart.map(item => ({
                     id_produto: item.id_produto,
@@ -211,11 +283,19 @@ export default function PaymentModal({
                     preco: Number(item.preco),
                     complementos: item.complementos || []
                 })),
-                metodo_pagamento: formaSelecionada?.descricao || method,
-                forma_pagamento_id: formaSelecionada?.id && !String(formaSelecionada.id).startsWith('sefaz_') ? formaSelecionada.id : null,
+                metodo_pagamento: isMultiplo
+                    ? pagamentosMultiplos.map(p => p.descricao).join(' + ').substring(0, 50)
+                    : (formaSelecionada?.descricao || method),
+                pagamentos_multiplos: isMultiplo ? pagamentosMultiplos.map(p => ({
+                    forma_id: p.forma?.id && !String(p.forma.id).startsWith('sefaz_') ? p.forma.id : null,
+                    codigo_sefaz: p.codigo_sefaz,
+                    descricao: p.descricao,
+                    valor: p.valor
+                })) : null,
+                forma_pagamento_id: !isMultiplo && formaSelecionada?.id && !String(formaSelecionada.id).startsWith('sefaz_') ? formaSelecionada.id : null,
                 caixa_id: pdvConfig?.caixa_id || undefined,
                 serie_numero: pdvConfig?.serie_numero || undefined,
-                valor_recebido: method === 'DINHEIRO' ? valorRecNum : totalLiquido,
+                valor_recebido: isMultiplo ? totalPagoMultiplo : (method === 'DINHEIRO' ? valorRecNum : totalLiquido),
                 desconto: valorDesconto,
                 cliente_id: clienteId || null,
                 cpf_cnpj_nota: cpfCnpjNota ? String(cpfCnpjNota).replace(/\D/g, '') : null,
@@ -375,17 +455,45 @@ export default function PaymentModal({
                             <h4 className="fw-bold mb-1" style={{ color: '#0f172a' }}>
                                 Venda #{vendaFinalizada.id_pedido} Concluída!
                             </h4>
-                            <div className="d-flex justify-content-center gap-2 align-items-center">
+                            <div className="d-flex justify-content-center gap-2 align-items-center flex-wrap">
                                 <Badge bg="primary" className="rounded-pill px-3 py-1">
                                     Total: {formatBRL(totalLiquido)}
                                 </Badge>
-                                {method === 'DINHEIRO' && troco > 0 && (
-                                    <Badge bg="warning" text="dark" className="rounded-pill px-3 py-1 fw-bold">
-                                        Troco: {formatBRL(troco)}
-                                    </Badge>
+                                {tipoPagamento === 'MULTIPLO' ? (
+                                    <>
+                                        <Badge bg="info" text="dark" className="rounded-pill px-3 py-1 fw-bold">
+                                            {pagamentosMultiplos.length} Formas de Pagamento
+                                        </Badge>
+                                        {trocoMultiplo > 0 && (
+                                            <Badge bg="warning" text="dark" className="rounded-pill px-3 py-1 fw-bold">
+                                                Troco: {formatBRL(trocoMultiplo)}
+                                            </Badge>
+                                        )}
+                                    </>
+                                ) : (
+                                    method === 'DINHEIRO' && troco > 0 && (
+                                        <Badge bg="warning" text="dark" className="rounded-pill px-3 py-1 fw-bold">
+                                            Troco: {formatBRL(troco)}
+                                        </Badge>
+                                    )
                                 )}
                             </div>
                         </div>
+
+                        {/* Detalhe de pagamentos múltiplos no pós-venda */}
+                        {tipoPagamento === 'MULTIPLO' && pagamentosMultiplos.length > 0 && (
+                            <div className="p-3 rounded-4 border bg-light mb-3 text-start small">
+                                <span className="fw-bold d-block text-secondary text-uppercase mb-2" style={{ fontSize: '11px' }}>
+                                    Pagamentos Divididos:
+                                </span>
+                                {pagamentosMultiplos.map((p, idx) => (
+                                    <div key={idx} className="d-flex justify-content-between py-1 border-bottom border-light-subtle">
+                                        <span>{p.descricao} (Cód. {p.codigo_sefaz}):</span>
+                                        <strong className="text-dark">{formatBRL(p.valor)}</strong>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
 
                         {/* Status Fiscal da Venda */}
                         {isAutorizada ? (
@@ -532,15 +640,35 @@ export default function PaymentModal({
                             <span>TOTAL A PAGAR:</span>
                             <span>{formatBRL(totalLiquido)}</span>
                         </div>
-                        <div className="d-flex justify-content-between">
-                            <span>FORMA PGTO:</span>
-                            <span>{formaSelecionada?.descricao || method.replace('_', ' ')}</span>
-                        </div>
-                        {method === 'DINHEIRO' && troco > 0 && (
-                            <div className="d-flex justify-content-between">
-                                <span>TROCO:</span>
-                                <span>{formatBRL(troco)}</span>
+                        {tipoPagamento === 'MULTIPLO' ? (
+                            <div>
+                                <div className="fw-bold mt-1">FORMAS DE PAGAMENTO:</div>
+                                {pagamentosMultiplos.map((p, idx) => (
+                                    <div key={idx} className="d-flex justify-content-between">
+                                        <span>- {p.descricao}:</span>
+                                        <span>{formatBRL(p.valor)}</span>
+                                    </div>
+                                ))}
+                                {trocoMultiplo > 0 && (
+                                    <div className="d-flex justify-content-between">
+                                        <span>TROCO:</span>
+                                        <span>{formatBRL(trocoMultiplo)}</span>
+                                    </div>
+                                )}
                             </div>
+                        ) : (
+                            <>
+                                <div className="d-flex justify-content-between">
+                                    <span>FORMA PGTO:</span>
+                                    <span>{formaSelecionada?.descricao || method.replace('_', ' ')}</span>
+                                </div>
+                                {method === 'DINHEIRO' && troco > 0 && (
+                                    <div className="d-flex justify-content-between">
+                                        <span>TROCO:</span>
+                                        <span>{formatBRL(troco)}</span>
+                                    </div>
+                                )}
+                            </>
                         )}
                     </div>
                 </div>
@@ -673,11 +801,144 @@ export default function PaymentModal({
                             </div>
                         </div>
 
-                        {/* 2. FORMAS DE PAGAMENTO SEFAZ */}
+                        {/* 2. MODALIDADE: PAGAMENTO ÚNICO vs MÚLTIPLAS FORMAS (DIVIDIR) */}
+                        <div className="d-flex align-items-center justify-content-between p-2 mb-3 rounded-4 bg-light border shadow-xs">
+                            <div className="d-flex align-items-center gap-2">
+                                <Wallet size={18} className="text-primary ms-2" />
+                                <span className="small fw-bold text-dark">Modalidade:</span>
+                            </div>
+                            <div className="btn-group btn-group-sm" role="group">
+                                <button
+                                    type="button"
+                                    onClick={() => setTipoPagamento('UNICO')}
+                                    className={`btn rounded-start-pill px-3 py-1 fw-bold ${
+                                        tipoPagamento === 'UNICO' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
+                                    }`}
+                                >
+                                    Pagamento Único
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setTipoPagamento('MULTIPLO');
+                                        const rest = Math.max(0, Number((totalLiquido - totalPagoMultiplo).toFixed(2)));
+                                        setValorParcialInput(rest > 0 ? String(rest) : '');
+                                    }}
+                                    className={`btn rounded-end-pill px-3 py-1 fw-bold ${
+                                        tipoPagamento === 'MULTIPLO' ? 'btn-primary shadow-sm' : 'btn-outline-secondary'
+                                    }`}
+                                >
+                                    <Sparkles size={14} className="me-1" />
+                                    Dividir / Múltiplas Formas
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* SE MODALIDADE MÚLTIPLA: CAIXA DE LANÇAMENTO E LISTA DE FORMAS */}
+                        {tipoPagamento === 'MULTIPLO' && (
+                            <div className="p-3 rounded-4 border shadow-sm mb-3" style={{ backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}>
+                                <div className="d-flex justify-content-between align-items-center mb-2">
+                                    <label className="d-block fw-bold text-uppercase mb-0" style={{ color: '#475569', fontSize: '11px' }}>
+                                        Lançar Valor para: <span className="text-primary">{formaSelecionada?.descricao || 'Selecione abaixo'}</span>
+                                    </label>
+                                    <Badge bg={saldoRestanteMultiplo === 0 ? 'success' : 'warning'} className="rounded-pill px-2.5 py-1">
+                                        {saldoRestanteMultiplo === 0 ? '✓ Total Coberto' : `Faltam ${formatBRL(saldoRestanteMultiplo)}`}
+                                    </Badge>
+                                </div>
+
+                                <div className="input-group border rounded-4 overflow-hidden mb-2" style={{ borderColor: '#cbd5e1', backgroundColor: '#ffffff' }}>
+                                    <span className="input-group-text border-0 fw-bold" style={{ backgroundColor: '#f1f5f9', color: '#475569' }}>
+                                        R$
+                                    </span>
+                                    <input
+                                        type="number"
+                                        step="0.01"
+                                        inputMode="decimal"
+                                        className="form-control border-0 fw-bolder text-primary"
+                                        style={{ fontSize: '1.25rem', padding: '6px 12px', boxShadow: 'none' }}
+                                        placeholder={saldoRestanteMultiplo > 0 ? saldoRestanteMultiplo.toFixed(2) : '0,00'}
+                                        value={valorParcialInput}
+                                        onChange={(e) => setValorParcialInput(e.target.value)}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                                e.preventDefault();
+                                                handleAdicionarPagamentoParcial();
+                                            }
+                                        }}
+                                    />
+                                    <button
+                                        type="button"
+                                        onClick={handleAdicionarPagamentoParcial}
+                                        className="btn btn-primary fw-bold px-3 d-flex align-items-center gap-1"
+                                        title="Adicionar forma de pagamento"
+                                    >
+                                        <Plus size={18} /> Adicionar
+                                    </button>
+                                </div>
+
+                                {/* Lista de formas adicionadas */}
+                                {pagamentosMultiplos.length > 0 ? (
+                                    <div className="mt-2">
+                                        <span className="d-block small fw-bold text-secondary text-uppercase mb-1" style={{ fontSize: '10px' }}>
+                                            Formas de Pagamento Lançadas:
+                                        </span>
+                                        <div className="d-flex flex-column gap-1">
+                                            {pagamentosMultiplos.map((p) => {
+                                                const IconP = getIconeForma(p.codigo_sefaz);
+                                                return (
+                                                    <div key={p.id} className="d-flex align-items-center justify-content-between p-2 rounded-3 bg-white border shadow-xs">
+                                                        <div className="d-flex align-items-center gap-2">
+                                                            <IconP size={16} className="text-primary" />
+                                                            <span className="fw-bold small text-dark">{p.descricao}</span>
+                                                            <span className="badge bg-light text-muted border font-monospace" style={{ fontSize: '9px' }}>
+                                                                Cód. {p.codigo_sefaz}
+                                                            </span>
+                                                        </div>
+                                                        <div className="d-flex align-items-center gap-2">
+                                                            <span className="fw-bolder text-success fs-6">{formatBRL(p.valor)}</span>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleRemoverPagamentoParcial(p.id)}
+                                                                className="btn btn-sm btn-outline-danger p-1 rounded-circle d-flex align-items-center justify-content-center"
+                                                                style={{ width: '26px', height: '26px' }}
+                                                                title="Remover"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+
+                                        <div className="d-flex justify-content-between align-items-center mt-2 pt-2 border-top">
+                                            <span className="small text-muted">
+                                                Total Lançado: <strong className="text-dark">{formatBRL(totalPagoMultiplo)}</strong>
+                                            </span>
+                                            {trocoMultiplo > 0 ? (
+                                                <span className="small fw-bold text-warning-emphasis">
+                                                    Troco: {formatBRL(trocoMultiplo)}
+                                                </span>
+                                            ) : (
+                                                <span className={`small fw-bold ${saldoRestanteMultiplo > 0 ? 'text-danger' : 'text-success'}`}>
+                                                    {saldoRestanteMultiplo > 0 ? `Faltam ${formatBRL(saldoRestanteMultiplo)}` : '✓ Pagamento Completo'}
+                                                </span>
+                                            )}
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <small className="text-muted d-block mt-1">
+                                        Nenhuma forma lançada. Escolha a forma abaixo, digite o valor e clique em <strong>Adicionar</strong>.
+                                    </small>
+                                )}
+                            </div>
+                        )}
+
+                        {/* 3. FORMAS DE PAGAMENTO SEFAZ */}
                         <div className="mb-3">
                             <div className="d-flex justify-content-between align-items-center mb-2">
                                 <label className="small fw-bold text-uppercase m-0" style={{ color: '#475569', fontSize: '11px', letterSpacing: '0.5px' }}>
-                                    2. Formas de Pagamento SEFAZ (Teclas 1 a {Math.min(9, formasSefaz.length)})
+                                    {tipoPagamento === 'MULTIPLO' ? 'Selecione a Forma para Adicionar:' : `Formas de Pagamento SEFAZ (Teclas 1 a ${Math.min(9, formasSefaz.length)})`}
                                 </label>
                                 {loadingFormas && <Spinner size="sm" animation="border" className="text-primary" />}
                             </div>
@@ -732,8 +993,8 @@ export default function PaymentModal({
                             </div>
                         </div>
 
-                        {/* 3. VALOR RECEBIDO E CÉDULAS RÁPIDAS (PARA DINHEIRO) */}
-                        {method === 'DINHEIRO' && (
+                        {/* 4. VALOR RECEBIDO E CÉDULAS RÁPIDAS (PARA PAGAMENTO ÚNICO EM DINHEIRO) */}
+                        {tipoPagamento === 'UNICO' && method === 'DINHEIRO' && (
                             <div
                                 className="p-3 rounded-4 border shadow-sm mb-3"
                                 style={{ backgroundColor: '#f8fafc', borderColor: '#e2e8f0' }}
@@ -856,9 +1117,11 @@ export default function PaymentModal({
                         <button
                             type="button"
                             onClick={handleConfirm}
-                            disabled={loading}
+                            disabled={loading || (tipoPagamento === 'MULTIPLO' && totalPagoMultiplo < totalLiquido)}
                             className={`btn btn-lg flex-grow-1 py-2 rounded-4 fw-bold shadow border-0 d-flex align-items-center justify-content-center gap-2 ${
-                                modoEmissao !== 'NAO_FISCAL' ? 'btn-success' : 'btn-primary'
+                                tipoPagamento === 'MULTIPLO' && totalPagoMultiplo < totalLiquido
+                                    ? 'btn-secondary text-white-50'
+                                    : (modoEmissao !== 'NAO_FISCAL' ? 'btn-success' : 'btn-primary')
                             }`}
                             style={{ fontSize: '15px' }}
                         >
@@ -869,14 +1132,23 @@ export default function PaymentModal({
                                 </>
                             ) : (
                                 <>
-                                    {modoEmissao !== 'NAO_FISCAL' ? <ShieldCheck size={20} /> : <Sparkles size={20} />}
-                                    <span>
-                                        {modoEmissao === 'NFCE'
-                                            ? 'Confirmar e Emitir NFC-e (Enter)'
-                                            : modoEmissao === 'NFE'
-                                            ? 'Confirmar e Emitir NF-e (Enter)'
-                                            : 'Confirmar Venda Não Fiscal (Enter)'}
-                                    </span>
+                                    {tipoPagamento === 'MULTIPLO' && totalPagoMultiplo < totalLiquido ? (
+                                        <>
+                                            <AlertTriangle size={20} className="text-warning" />
+                                            <span>Faltam {formatBRL(saldoRestanteMultiplo)} para Finalizar</span>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {modoEmissao !== 'NAO_FISCAL' ? <ShieldCheck size={20} /> : <Sparkles size={20} />}
+                                            <span>
+                                                {modoEmissao === 'NFCE'
+                                                    ? 'Confirmar e Emitir NFC-e (Enter)'
+                                                    : modoEmissao === 'NFE'
+                                                    ? 'Confirmar e Emitir NF-e (Enter)'
+                                                    : 'Confirmar Venda Não Fiscal (Enter)'}
+                                            </span>
+                                        </>
+                                    )}
                                 </>
                             )}
                         </button>

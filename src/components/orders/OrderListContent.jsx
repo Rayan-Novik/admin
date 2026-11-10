@@ -175,6 +175,38 @@ export const OrderListContent = ({
                                         </SquareButton>
                                     </OverlayTrigger>
 
+                                    {/* Ação para Pedidos Cancelados: Puxar Informações e Gerar Novo Pedido */}
+                                    {(p.status_pagamento === 'CANCELADO' || p.status_pagamento === 'REJEITADO') && (
+                                        <OverlayTrigger overlay={<Tooltip>Puxar Informações e Gerar Novo Pedido no PDV</Tooltip>}>
+                                            <SquareButton
+                                                className="text-success border-success bg-success bg-opacity-10"
+                                                onClick={() => {
+                                                    const payloadClone = {
+                                                        origem_pedido_id: p.id_pedido,
+                                                        cliente: {
+                                                            id_usuario: p.id_usuario,
+                                                            nome: p.nome_completo || 'Cliente',
+                                                            telefone: p.telefone || '',
+                                                            email: p.email || ''
+                                                        },
+                                                        cpf_cnpj: p.cpf_cnpj_nota || '',
+                                                        itens: (p.itens || []).map(it => ({
+                                                            id_produto: it.id_produto,
+                                                            nome: it.nome,
+                                                            quantidade: Number(it.quantidade) || 1,
+                                                            preco: Number(it.preco) || 0,
+                                                            observacao: it.observacao || ''
+                                                        }))
+                                                    };
+                                                    localStorage.setItem('azun_clone_order', JSON.stringify(payloadClone));
+                                                    window.location.href = '/admin/pdv';
+                                                }}
+                                            >
+                                                <i className="bi bi-arrow-repeat"></i>
+                                            </SquareButton>
+                                        </OverlayTrigger>
+                                    )}
+
                                     {/* Ações Mercado Livre */}
                                     {p.origem === 'mercadolivre' && (
                                         <OverlayTrigger overlay={<Tooltip>Ver no Mercado Livre</Tooltip>}>

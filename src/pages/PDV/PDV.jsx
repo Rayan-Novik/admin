@@ -97,6 +97,28 @@ export default function PDV() {
 
     useEffect(() => {
         loadStatus();
+
+        // 🟢 Recupera pedido cancelado/clonado para gerar novo pedido no PDV
+        try {
+            const rawClone = localStorage.getItem('azun_clone_order');
+            if (rawClone) {
+                const orderData = JSON.parse(rawClone);
+                localStorage.removeItem('azun_clone_order');
+                if (orderData?.itens && Array.isArray(orderData.itens) && orderData.itens.length > 0) {
+                    setCart(orderData.itens);
+                    if (orderData.cliente) {
+                        setClienteSelecionado(orderData.cliente);
+                    }
+                    if (orderData.cpf_cnpj) {
+                        setCpfCnpjNota(orderData.cpf_cnpj);
+                    }
+                    playPdvBeep('success');
+                    toast.success(`Dados do Pedido #${orderData.origem_pedido_id || ''} importados com sucesso! Carrinho pronto para novo pedido.`);
+                }
+            }
+        } catch (e) {
+            console.error('Erro ao importar pedido clonado:', e);
+        }
     }, []);
 
     // Alterna rapidamente entre Modo Fiscal (NFC-e) e Não Fiscal (Recibo)
