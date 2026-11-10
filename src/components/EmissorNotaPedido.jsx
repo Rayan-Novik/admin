@@ -114,7 +114,30 @@ export default function EmissorNotaPedido({ idPedido, notaInicial }) {
                                         {nota.status}
                                     </span>
                                 </div>
-                                <p className="mb-3 text-muted small"><em>{nota.motivo_status}</em></p>
+                                <p className="mb-2 text-muted small"><em>{nota.motivo_status}</em></p>
+
+                                {nota.status === 'AUTORIZADA' && nota.tipo_nota === 'NFCE' && (() => {
+                                    const dataEmissao = new Date(nota.data_autorizacao || nota.created_at || nota.updated_at);
+                                    const elapsed = !isNaN(dataEmissao.getTime()) ? Math.floor((Date.now() - dataEmissao.getTime()) / 1000) : 999999;
+                                    const cancelavel = elapsed < 1800;
+                                    const min = Math.max(0, 30 - Math.floor(elapsed / 60));
+                                    return (
+                                        <div className="mb-3 p-2 rounded bg-white border small">
+                                            <div className="d-flex justify-content-between align-items-center">
+                                                <span className="text-secondary"><i className="bi bi-clock-history me-1 text-danger"></i> Prazo Cancelamento SEFAZ:</span>
+                                                {cancelavel ? (
+                                                    <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 font-monospace">
+                                                        ⏱️ Restam ~{min} min (limite 30 min)
+                                                    </span>
+                                                ) : (
+                                                    <span className="badge bg-light text-muted border">
+                                                        Prazo de 30 min expirado
+                                                    </span>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
 
                                 <div className="d-flex gap-2">
                                     {nota.status === 'RASCUNHO' && (

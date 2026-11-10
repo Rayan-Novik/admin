@@ -107,10 +107,30 @@ export default function SalesHistory() {
         const nfLegado = venda.nota_fiscal;
 
         if (fn && fn.status === 'AUTORIZADA') {
+            const dataEmissao = new Date(fn.data_autorizacao || fn.created_at || venda.created_at || venda.data_hora);
+            const elapsedSeg = !isNaN(dataEmissao.getTime()) ? Math.floor((Date.now() - dataEmissao.getTime()) / 1000) : 999999;
+            const cancelavel = elapsedSeg < 1800; // 30 minutos SEFAZ
+            const minRestantes = Math.max(0, 30 - Math.floor(elapsedSeg / 60));
+
             return (
-                <Badge bg="success" className="rounded-pill px-2 py-1 d-inline-flex align-items-center gap-1">
-                    <ShieldCheck size={12} /> {fn.tipo} #{fn.numero}
-                </Badge>
+                <div>
+                    <Badge bg="success" className="rounded-pill px-2 py-1 d-inline-flex align-items-center gap-1">
+                        <ShieldCheck size={12} /> {fn.tipo} #{fn.numero}
+                    </Badge>
+                    {(fn.tipo === 'NFCE' || (!fn.tipo && venda.tipo_documento_fiscal === 'NFCE')) && (
+                        <div className="mt-1">
+                            {cancelavel ? (
+                                <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 font-monospace" style={{ fontSize: '10px' }} title="Prazo regulamentar de cancelamento SEFAZ: até 30 minutos">
+                                    ⏱️ Cancela em {minRestantes}m
+                                </span>
+                            ) : (
+                                <span className="badge bg-light text-muted border" style={{ fontSize: '10px' }} title="Prazo de 30 minutos da SEFAZ para cancelamento expirado">
+                                    Prazo SEFAZ Expirado
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
             );
         }
         if (fn && fn.status === 'REJEITADA') {
@@ -121,10 +141,30 @@ export default function SalesHistory() {
             );
         }
         if (nfLegado && nfLegado.status === 'AUTORIZADA') {
+            const dataEmissao = new Date(nfLegado.data_autorizacao || nfLegado.created_at || venda.created_at || venda.data_hora);
+            const elapsedSeg = !isNaN(dataEmissao.getTime()) ? Math.floor((Date.now() - dataEmissao.getTime()) / 1000) : 999999;
+            const cancelavel = elapsedSeg < 1800; // 30 minutos SEFAZ
+            const minRestantes = Math.max(0, 30 - Math.floor(elapsedSeg / 60));
+
             return (
-                <Badge bg="success" className="rounded-pill px-2 py-1 d-inline-flex align-items-center gap-1">
-                    <ShieldCheck size={12} /> {nfLegado.tipo} #{nfLegado.numero}
-                </Badge>
+                <div>
+                    <Badge bg="success" className="rounded-pill px-2 py-1 d-inline-flex align-items-center gap-1">
+                        <ShieldCheck size={12} /> {nfLegado.tipo} #{nfLegado.numero}
+                    </Badge>
+                    {nfLegado.tipo === 'NFCE' && (
+                        <div className="mt-1">
+                            {cancelavel ? (
+                                <span className="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25 font-monospace" style={{ fontSize: '10px' }} title="Prazo regulamentar de cancelamento SEFAZ: até 30 minutos">
+                                    ⏱️ Cancela em {minRestantes}m
+                                </span>
+                            ) : (
+                                <span className="badge bg-light text-muted border" style={{ fontSize: '10px' }} title="Prazo de 30 minutos da SEFAZ para cancelamento expirado">
+                                    Prazo SEFAZ Expirado
+                                </span>
+                            )}
+                        </div>
+                    )}
+                </div>
             );
         }
         return (
