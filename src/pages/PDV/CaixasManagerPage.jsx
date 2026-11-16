@@ -17,7 +17,8 @@ import {
     Check,
     Laptop,
     Send,
-    MapPin
+    MapPin,
+    Unlink
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -48,6 +49,7 @@ export default function CaixasManagerPage() {
     const [novoUltimoNumero, setNovoUltimoNumero] = useState('');
     const [salvandoNumero, setSalvandoNumero] = useState(false);
     const [regerandoTokenId, setRegerandoTokenId] = useState(null);
+    const [desvinculandoId, setDesvinculandoId] = useState(null);
 
     // Controle de Módulos nos Caixas Desktop (.exe)
     const [moduloEntregasAtivo, setModuloEntregasAtivo] = useState(true);
@@ -168,6 +170,23 @@ export default function CaixasManagerPage() {
             toast.error(error.response?.data?.message || 'Erro ao regerar token do caixa.');
         } finally {
             setRegerandoTokenId(null);
+        }
+    };
+
+    const handleDesvincularComputador = async (caixa) => {
+        if (!window.confirm(`Deseja desvincular o computador atual do ${caixa.nome}?\n\n💻 HWID Atual: ${caixa.hardware_id || 'Não informado'}\n\nLiberando esta máquina, você poderá usar o mesmo código (${caixa.token_conexao}) em um novo computador ou em uma máquina formatada sem precisar regerar o código.`)) {
+            return;
+        }
+
+        setDesvinculandoId(caixa.id);
+        try {
+            const { data } = await api.post(`/pdv/caixas/${caixa.id}/desvincular-hwid`);
+            toast.success(data.message || 'Computador desvinculado com sucesso!');
+            carregarCaixas();
+        } catch (error) {
+            toast.error(error.response?.data?.message || 'Erro ao desvincular computador.');
+        } finally {
+            setDesvinculandoId(null);
         }
     };
 
@@ -541,6 +560,22 @@ export default function CaixasManagerPage() {
                                                     )}
                                                     <span>Regerar Token</span>
                                                 </button>
+                                                {(c.dispositivo_vinculado || c.hardware_id) && (
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDesvincularComputador(c)}
+                                                        disabled={desvinculandoId === c.id}
+                                                        className="btn btn-sm btn-outline-danger rounded-pill px-2.5 py-1 d-flex align-items-center gap-1 small"
+                                                        title={`Desvincular Computador (${c.hardware_id || 'Pareado'}). Permite recincronizar em novo PC ou máquina formatada mantendo o código.`}
+                                                    >
+                                                        {desvinculandoId === c.id ? (
+                                                            <Spinner animation="border" size="sm" style={{ width: '12px', height: '12px' }} />
+                                                        ) : (
+                                                            <Unlink size={12} />
+                                                        )}
+                                                        <span>Desvincular PC</span>
+                                                    </button>
+                                                )}
                                                 <button
                                                     type="button"
                                                     onClick={() => handleAbrirEditarNumero(c)}

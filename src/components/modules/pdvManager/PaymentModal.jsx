@@ -303,7 +303,9 @@ export default function PaymentModal({
                 emitir_fiscal: emitirFiscal,
                 tipo_documento_fiscal: modoEmissao === 'NFE' ? 'NFE' : 'NFCE',
                 cenario_id: pdvConfig?.cenario_id || undefined,
-                ambiente_fiscal: pdvConfig?.ambiente_fiscal || undefined
+                ambiente_fiscal: pdvConfig?.ambiente_fiscal || undefined,
+                origem: 'WEB',
+                ambiente: 'WEB'
             };
 
             const { data } = await api.post('/pdv/venda', payload);
@@ -344,7 +346,9 @@ export default function PaymentModal({
                 cenario_id: pdvConfig?.cenario_id,
                 caixa_id: pdvConfig?.caixa_id,
                 serie_numero: pdvConfig?.serie_numero,
-                forma_pagamento_id: formaSelecionada?.id && !String(formaSelecionada.id).startsWith('sefaz_') ? formaSelecionada.id : null
+                forma_pagamento_id: formaSelecionada?.id && !String(formaSelecionada.id).startsWith('sefaz_') ? formaSelecionada.id : null,
+                origem: 'WEB',
+                ambiente: 'WEB'
             });
             setFiscalResult(data.nota_fiscal);
             if (data.nota_fiscal?.status === 'AUTORIZADA') {

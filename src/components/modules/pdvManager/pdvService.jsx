@@ -172,3 +172,36 @@ export const emitirNotaFiscalPdv = async (id_nota) => {
     const { data } = await api.post(`/fiscal/notas/${id_nota}/emitir`);
     return data;
 };
+
+// ============================================================
+// 🔒 SESSÕES DE CAIXA E EXCLUSIVIDADE (WEB vs EXE)
+// ============================================================
+export const listarCaixasCadastrados = async () => {
+    const { data } = await api.get('/pdv/caixas');
+    return data;
+};
+
+export const obterStatusSessaoCaixa = async (caixaId) => {
+    const { data } = await api.get(`/pdv/caixas/status-sessao/${caixaId}`);
+    return data;
+};
+
+export const iniciarSessaoCaixa = async (payload) => {
+    const { data } = await api.post('/pdv/caixas/iniciar-sessao', payload);
+    return data;
+};
+
+export const assumirSessaoCaixa = async (payload) => {
+    const { data } = await api.post('/pdv/caixas/assumir', payload);
+    return data;
+};
+
+export const heartbeatSessaoCaixa = async (payload) => {
+    const { data } = await api.post('/pdv/caixas/heartbeat', payload);
+    return data;
+};
+
+export const desconectarSessaoCaixa = async (payload) => {
+    const { data } = await api.post('/pdv/caixas/desconectar', payload);
+    return data;
+};

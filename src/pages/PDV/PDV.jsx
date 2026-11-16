@@ -5,7 +5,8 @@ import {
     buscarProdutos,
     getPdvConfig,
     savePdvConfig,
-    playPdvBeep
+    playPdvBeep,
+    heartbeatSessaoCaixa
 } from '../../components/modules/pdvManager/pdvService';
 import ProductSearch from '../../components/modules/pdvManager/ProductSearch';
 import Cart from '../../components/modules/pdvManager/Cart';
@@ -18,6 +19,7 @@ import DailyReportModal from '../../components/modules/pdvManager/DailyReportMod
 import BarcodeScannerModal from '../../components/modules/pdvManager/BarcodeScannerModal';
 import PdvConfigModal from '../../components/modules/pdvManager/PdvConfigModal';
 import PdvHelpModal from '../../components/modules/pdvManager/PdvHelpModal';
+import CaixaSelectorModal from '../../components/modules/pdvManager/CaixaSelectorModal';
 import CaixaComandas from '../../components/comanda/CaixaComandas';
 import AgendamentosCaixa from '../../components/modules/pdvManager/AgendamentosCaixa';
 
@@ -71,6 +73,20 @@ export default function PDV() {
     const [cart, setCart] = useState([]);
     const [clienteSelecionado, setClienteSelecionado] = useState(null);
     const [cpfCnpjNota, setCpfCnpjNota] = useState('');
+
+    // 🔒 Caixa Cadastrado Selecionado para Operação na Web (Exclusividade de Terminal e Série 51/52)
+    const [caixaSelecionado, setCaixaSelecionado] = useState(() => {
+        try {
+            const saved = sessionStorage.getItem('azun_pdv_caixa_selecionado');
+            return saved ? JSON.parse(saved) : null;
+        } catch {
+            return null;
+        }
+    });
+    const [sessionToken, setSessionToken] = useState(() => {
+        return sessionStorage.getItem('azun_pdv_session_token') || '';
+    });
+    const [modalSelectorOpen, setModalSelectorOpen] = useState(false);
 
     // Configurações persistentes do PDV (Fiscal / Não Fiscal, Série, Cenário, Impressão, Atalhos)
     const [pdvConfig, setPdvConfig] = useState(() => getPdvConfig());
@@ -291,7 +307,14 @@ export default function PDV() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [cart, statusCaixa, abaAtiva, modalPaymentOpen, podeMovimentarCaixa, handleToggleFiscalMode]);
 
-    const loadStatus = async () => {
+    const loadStatus = async (caixaAlvo = null) => {
+        const cx = caixaAlvo || caixaSelecionado;
+        if (!cx) {
+            setModalSelectorOpen(true);
+            setLoadingInit(false);
+            return;
+        }
+
         setLoadingInit(true);
         try {
             const data = await getStatusCaixa();
@@ -309,6 +332,57 @@ export default function PDV() {
             setLoadingInit(false);
         }
     };
+
+    const handleCaixaSelecionado = (caixa, token) => {
+        setCaixaSelecionado(caixa);
+        setSessionToken(token);
+        sessionStorage.setItem('azun_pdv_caixa_selecionado', JSON.stringify(caixa));
+        sessionStorage.setItem('azun_pdv_session_token', token);
+        setModalSelectorOpen(false);
+
+        // Atualiza a série web no config do PDV (Caixa 1 = 51, Caixa 2 = 52)
+        const serieWebNum = caixa.serie_web || (50 + (caixa.numero_caixa || 1));
+        setPdvConfig(prev => {
+            const updated = savePdvConfig({
+                ...prev,
+                caixa_id: caixa.id,
+                numero_caixa: caixa.numero_caixa,
+                serie_numero: serieWebNum
+            });
+            return updated;
+        });
+
+        loadStatus(caixa);
+    };
+
+    // Heartbeat de Exclusividade: a cada 4 segundos checa se o Desktop (.EXE) assumiu este caixa
+    useEffect(() => {
+        if (!caixaSelecionado?.id || !sessionToken) return;
+
+        const interval = setInterval(async () => {
+            try {
+                const data = await heartbeatSessaoCaixa({
+                    caixa_id: caixaSelecionado.id,
+                    session_token: sessionToken,
+                    ambiente: 'WEB'
+                });
+
+                if (data?.desconectado) {
+                    playPdvBeep('error');
+                    toast.error(`⚠️ ${data.motivo || 'O caixa foi assumido no PDV Desktop (.EXE).'}`);
+                    setCaixaSelecionado(null);
+                    setSessionToken('');
+                    sessionStorage.removeItem('azun_pdv_caixa_selecionado');
+                    sessionStorage.removeItem('azun_pdv_session_token');
+                    setModalSelectorOpen(true);
+                }
+            } catch (err) {
+                console.warn('Heartbeat do caixa falhou temporariamente:', err);
+            }
+        }, 4000);
+
+        return () => clearInterval(interval);
+    }, [caixaSelecionado, sessionToken]);
 
     const handleAddProduct = (produto) => {
         setCart((prev) => {
@@ -372,6 +446,15 @@ export default function PDV() {
                     >
                         {isFiscal ? `FISCAL (${pdvConfig.modo_fiscal})` : 'NÃO FISCAL'}
                     </Badge>
+                    <Button
+                        variant="light"
+                        className="p-1 px-2 border rounded-pill d-flex align-items-center gap-1 text-dark small"
+                        onClick={() => setModalSelectorOpen(true)}
+                        title="Alternar Caixa Cadastrado"
+                    >
+                        <Monitor size={12} className="text-primary" />
+                        <span style={{ fontSize: '10px', fontWeight: 'bold' }}>{caixaSelecionado?.nome ? caixaSelecionado.nome.substring(0, 10) : 'Caixa'}</span>
+                    </Button>
                 </div>
                 <div className="d-flex align-items-center gap-1">
                     <Button variant="light" className="p-1 border-0 bg-transparent text-secondary" onClick={() => abrirConfigPdv('FISCAL')} title="Configurações PDV">
@@ -565,6 +648,23 @@ export default function PDV() {
                                 Saldo: R$ {Number(resumo.saldo_sistema).toFixed(2).replace('.', ',')}
                             </Badge>
                         )}
+
+                        {/* Seletor de Caixa e Série Web */}
+                        <button
+                            type="button"
+                            onClick={() => setModalSelectorOpen(true)}
+                            className="btn btn-sm btn-outline-secondary rounded-pill px-3 py-1 d-flex align-items-center gap-1 bg-white shadow-sm"
+                            style={{ borderColor: 'var(--border-color)', fontSize: '11.5px' }}
+                            title="Clique para alternar o caixa cadastrado ou visualizar séries"
+                        >
+                            <Monitor size={14} className="text-primary me-1" />
+                            <strong className="text-dark">{caixaSelecionado ? caixaSelecionado.nome : 'Selecionar Caixa'}</strong>
+                            {caixaSelecionado && (
+                                <Badge bg="success" className="font-monospace ms-1" style={{ fontSize: '10px' }}>
+                                    Série Web: {caixaSelecionado.serie_web || (50 + (caixaSelecionado.numero_caixa || 1))}
+                                </Badge>
+                            )}
+                        </button>
 
                         {/* Chave Seletora Fiscal vs Não Fiscal no Topo */}
                         <button
@@ -924,6 +1024,20 @@ export default function PDV() {
             <PdvHelpModal
                 isOpen={modalHelpOpen}
                 onClose={() => setModalHelpOpen(false)}
+            />
+
+            {/* Modal de Seleção Obrigatória de Caixa Cadastrado */}
+            <CaixaSelectorModal
+                isOpen={modalSelectorOpen || !caixaSelecionado}
+                onClose={() => {
+                    if (caixaSelecionado) {
+                        setModalSelectorOpen(false);
+                    } else {
+                        navigate('/');
+                    }
+                }}
+                onCaixaSelecionado={handleCaixaSelecionado}
+                usuarioLogado={user}
             />
 
             <style>{`
